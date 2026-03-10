@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NullOS</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0d0f;--surface:rgba(255,255,255,0.06);--surface2:rgba(255,255,255,0.1);
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --text:#f0f0f0;--muted:#888;--accent:#7eb8f7;--accent2:#a78bfa;
+  --red:#ff5f57;--yellow:#febc2e;--green:#28c840;
+  --sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--bar-h:44px;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg);color:var(--text);user-select:none;}
+#boot{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.8s;}
+#boot.fade{opacity:0;pointer-events:none;}
+.boot-logo{font-family:var(--mono);font-size:32px;font-weight:300;letter-spacing:0.3em;color:#fff;margin-bottom:48px;opacity:0;animation:fadeUp 1s 0.3s forwards;}
+.boot-bar{width:180px;height:2px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
+.boot-fill{height:100%;background:#fff;border-radius:2px;width:0;animation:bootLoad 2.5s 0.5s ease-out forwards;}
+@keyframes bootLoad{0%{width:0}60%{width:70%}80%{width:85%}100%{width:100%}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+#desktop{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;background-size:cover;background-position:center;}
+.wp-1{background:radial-gradient(ellipse at 20% 50%,#1a1040,transparent 60%),radial-gradient(ellipse at 80% 20%,#0a2040,transparent 55%),radial-gradient(ellipse at 60% 80%,#0d1a30,transparent 50%),#080810;}
+.wp-2{background:radial-gradient(ellipse at 30% 40%,#1a0a20,transparent 60%),radial-gradient(ellipse at 70% 70%,#200a10,transparent 55%),#100808;}
+.wp-3{background:radial-gradient(ellipse at 50% 30%,#0a1a10,transparent 60%),radial-gradient(ellipse at 30% 70%,#0a2015,transparent 55%),#080f08;}
+.wp-4{background:radial-gradient(ellipse at 60% 40%,#1a1400,transparent 60%),radial-gradient(ellipse at 20% 70%,#201000,transparent 55%),#100e00;}
+.wp-5{background:radial-gradient(ellipse at 40% 50%,#0a0a2a,transparent 60%),radial-gradient(ellipse at 80% 30%,#0a1530,transparent 55%),#050510;}
+#menubar{height:var(--bar-h);flex-shrink:0;background:rgba(10,10,16,0.75);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;z-index:100;}
+.mb-logo{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:0.1em;color:var(--text);padding:0 12px;}
+.mb-sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
+.mb-item{padding:0 10px;height:100%;display:flex;align-items:center;font-size:13px;color:var(--muted);cursor:pointer;border-radius:6px;transition:all 0.15s;}
+.mb-item:hover{background:var(--surface);color:var(--text);}
+.mb-right{margin-left:auto;}
+#clock{font-family:var(--mono);font-size:12px;color:var(--text);padding:0 12px;opacity:0.8;}
+#desktop-area{flex:1;position:relative;overflow:hidden;}
+.desk-icon{position:absolute;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:10px;cursor:pointer;width:80px;transition:background 0.15s;}
+.desk-icon:hover{background:rgba(255,255,255,0.06);}
+.desk-icon.selected{background:rgba(126,184,247,0.15);}
+.desk-icon .icon-img{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(10px);box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:transform 0.15s;}
+.desk-icon:hover .icon-img{transform:scale(1.05);}
+.desk-icon .icon-label{font-size:11px;color:var(--text);text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.8);white-space:nowrap;}
+/* Context Menu */
+#ctx-menu{position:fixed;z-index:9000;background:rgba(18,18,26,0.97);border:1px solid var(--border2);border-radius:10px;padding:4px;min-width:210px;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;}
+.ctx-item{padding:7px 12px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text);transition:background 0.1s;}
+.ctx-item:hover{background:var(--surface2);}
+.ctx-item.danger{color:var(--red);}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+/* Windows */
+.window{position:absolute;background:rgba(14,14,20,0.93);border:1px solid var(--border2);border-radius:14px;backdrop-filter:blur(30px);box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);display:flex;flex-direction:column;min-width:320px;min-height:200px;overflow:hidden;transition:box-shadow 0.2s;}
+.window.active{box-shadow:0 32px 100px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.08);}
+.window.minimized{display:none;}
+.win-titlebar{height:44px;flex-shrink:0;display:flex;align-items:center;padding:0 14px;gap:10px;cursor:move;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.win-btns{display:flex;gap:8px;flex-shrink:0;}
+.win-btn{width:14px;height:14px;border-radius:50%;border:none;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.win-btn .bi{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:1;font-style:normal;font-weight:900;line-height:1;pointer-events:none;}
+.win-close{background:var(--red);}.win-close .bi{font-size:8px;color:rgba(80,0,0,0.7);}
+.win-min{background:var(--yellow);}.win-min .bi{font-size:10px;color:rgba(80,50,0,0.6);}
+.win-max{background:var(--green);}.win-max .bi{font-size:9px;color:rgba(0,50,0,0.6);}
+.win-title{flex:1;text-align:center;font-size:13px;font-weight:500;color:var(--muted);pointer-events:none;}
+.win-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.resize-handle{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:se-resize;}
+/* Dock */
+#dock{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(20,20,28,0.72);border:1px solid var(--border2);border-radius:18px;backdrop-filter:blur(30px);padding:8px 12px;display:flex;align-items:center;gap:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:200;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1),opacity 0.35s;}
+#dock.hidden{transform:translateX(-50%) translateY(120%);opacity:0;}
+.dock-item{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),background 0.15s;position:relative;flex-shrink:0;}
+.dock-item:hover{transform:scale(1.2) translateY(-6px);background:rgba(255,255,255,0.12);}
+.dock-item.running::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent);}
+.dock-badge{position:absolute;top:-4px;right:-4px;background:var(--accent);color:#000;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;font-family:var(--mono);}
+.dock-sep{width:1px;height:36px;background:var(--border2);margin:0 4px;flex-shrink:0;}
+/* Win picker popup */
+.win-picker{position:fixed;z-index:9100;background:rgba(18,18,26,0.97);border:1px solid var(--border2);border-radius:10px;padding:4px;min-width:180px;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+/* Files */
+.fm-sidebar{width:160px;flex-shrink:0;border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px;background:rgba(0,0,0,0.2);}
+.fm-nav-item{padding:7px 10px;border-radius:7px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--muted);transition:all 0.15s;}
+.fm-nav-item:hover,.fm-nav-item.active{background:var(--surface);color:var(--text);}
+.fm-nav-label{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:8px 10px 4px;font-weight:500;}
+.fm-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.fm-toolbar{height:42px;flex-shrink:0;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;}
+.fm-btn{padding:5px 10px;border-radius:6px;font-size:12px;font-family:var(--sans);background:var(--surface);border:1px solid var(--border);color:var(--text);cursor:pointer;transition:all 0.15s;}
+.fm-btn:hover{background:var(--surface2);}
+.fm-path{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto;}
+.fm-grid{flex:1;overflow-y:auto;padding:16px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;}
+.fm-item{width:80px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
+.fm-item:hover{background:var(--surface);}
+.fm-item.selected{background:rgba(126,184,247,0.15);}
+.fm-item-icon{font-size:32px;line-height:1;}
+.fm-item-name{font-size:11px;text-align:center;color:var(--text);word-break:break-word;line-height:1.3;}
+.fm-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-style:italic;}
+/* Browser */
+.browser-bar{height:46px;flex-shrink:0;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:7px;background:rgba(0,0,0,0.25);}
+.br-tabs{height:38px;flex-shrink:0;display:flex;align-items:flex-end;padding:0 8px;gap:2px;background:rgba(0,0,0,0.35);overflow-x:auto;overflow-y:hidden;}
+.br-tabs::-webkit-scrollbar{height:0;}
+.br-tab{display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;height:30px;border-radius:8px 8px 0 0;font-size:12px;color:var(--muted);cursor:pointer;background:rgba(255,255,255,0.04);border:1px solid transparent;border-bottom:none;flex-shrink:0;max-width:160px;transition:all 0.15s;white-space:nowrap;}
+.br-tab:hover{background:rgba(255,255,255,0.08);color:var(--text);}
+.br-tab.active{background:rgba(14,14,20,0.93);border-color:var(--border2);color:var(--text);}
+.br-tab-title{overflow:hidden;text-overflow:ellipsis;max-width:110px;}
+.br-tab-close{opacity:0;font-size:10px;padding:2px 4px;border-radius:4px;line-height:1;flex-shrink:0;transition:opacity 0.1s;}
+.br-tab:hover .br-tab-close,.br-tab.active .br-tab-close{opacity:0.5;}
+.br-tab-close:hover{opacity:1!important;background:rgba(255,95,87,0.3);}
+.br-new-tab{width:28px;height:28px;border-radius:6px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;margin-bottom:2px;}
+.br-new-tab:hover{background:var(--surface);color:var(--text);}
+.br-nav{width:28px;height:28px;border-radius:7px;border:none;background:var(--surface);color:var(--text);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background 0.15s;flex-shrink:0;}
+.br-nav:hover{background:var(--surface2);}
+.br-nav:disabled{opacity:0.3;cursor:default;}
+.br-url{flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color 0.2s;}
+.br-url:focus{border-color:var(--accent);}
+.br-go{padding:7px 14px;border-radius:7px;border:none;background:var(--accent);color:#000;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.br-blocked{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);padding:32px;text-align:center;background:rgba(0,0,0,0.1);}
+.br-newtab{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:40px 24px 24px;gap:24px;}
+.s-logo{font-family:var(--mono);font-size:34px;font-weight:300;letter-spacing:0.3em;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.s-bar{width:100%;max-width:480px;display:flex;align-items:center;background:var(--surface);border:1px solid var(--border2);border-radius:28px;padding:0 16px;gap:10px;transition:border-color 0.2s,box-shadow 0.2s;}
+.s-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(126,184,247,0.1);}
+.s-bar input{flex:1;background:none;border:none;outline:none;font-family:var(--sans);font-size:15px;color:var(--text);padding:13px 0;}
+.s-bar input::placeholder{color:var(--muted);}
+.s-btn{background:var(--accent);border:none;border-radius:20px;padding:7px 16px;font-family:var(--sans);font-size:13px;color:#000;cursor:pointer;font-weight:600;flex-shrink:0;}
+.shortcuts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.sc{padding:8px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--border);font-size:12px;color:var(--muted);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px;}
+.sc:hover{background:var(--surface2);color:var(--text);}
+/* Terminal */
+.terminal{flex:1;background:#050508;padding:14px;overflow-y:auto;font-family:var(--mono);font-size:13px;line-height:1.7;color:#c8d3e0;}
+.t-line{display:flex;gap:6px;}
+.t-prompt{color:var(--accent);flex-shrink:0;}
+.t-out{color:#c8d3e0;white-space:pre-wrap;}
+.t-err{color:var(--red);}
+.t-input{flex:1;background:none;border:none;outline:none;font-family:var(--mono);font-size:13px;color:#c8d3e0;caret-color:var(--accent);}
+/* Notes */
+.notes-app{flex:1;display:flex;flex-direction:column;}
+.notes-tb{height:42px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;}
+.notes-ed{flex:1;background:none;border:none;outline:none;resize:none;font-family:var(--sans);font-size:14px;line-height:1.7;color:var(--text);padding:20px;overflow-y:auto;}
+.notes-ed::placeholder{color:var(--muted);}
+/* Settings */
+.settings-app{flex:1;overflow-y:auto;padding:24px;}
+.s-section{margin-bottom:28px;}
+.s-title{font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-weight:500;}
+.s-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:10px;background:var(--surface);margin-bottom:4px;}
+.wp-grid{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.wp-swatch{width:80px;height:50px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:border-color 0.15s,transform 0.15s;flex-shrink:0;}
+.wp-swatch:hover{transform:scale(1.05);}
+.wp-swatch.active{border-color:var(--accent);}
+.wp-upload{width:80px;height:50px;border-radius:8px;cursor:pointer;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.15s;flex-shrink:0;}
+.wp-upload:hover{border-color:var(--accent);background:var(--surface);}
+/* Notif */
+.notif{position:fixed;top:54px;right:14px;z-index:8000;background:rgba(18,18,26,0.97);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;min-width:240px;max-width:300px;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.4);display:flex;gap:10px;align-items:flex-start;animation:slideIn 0.3s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.n-icon{font-size:18px;flex-shrink:0;}.n-title{font-size:13px;font-weight:500;margin-bottom:2px;}.n-body{font-size:12px;color:var(--muted);}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:4px;}
+/* Games */
+.games-app{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#050508;}
+.games-menu{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;}
+.games-title{font-family:var(--mono);font-size:22px;font-weight:300;letter-spacing:0.2em;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
+.games-grid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+.game-card{width:130px;height:110px;border-radius:14px;background:var(--surface);border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all 0.2s;}
+.game-card:hover{background:var(--surface2);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.game-card .gc-icon{font-size:32px;}.game-card .gc-name{font-size:13px;font-weight:500;color:var(--text);}.game-card .gc-desc{font-size:11px;color:var(--muted);}
+.game-view{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.game-hdr{height:42px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:10px;background:rgba(0,0,0,0.3);}
+.game-hdr-back{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--sans);}
+.game-hdr-back:hover{background:var(--surface2);}
+.game-score{font-family:var(--mono);font-size:12px;color:var(--accent);margin-left:auto;}
+.game-canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#050508;position:relative;overflow:hidden;}
+canvas.game-canvas{image-rendering:pixelated;border-radius:4px;}
+.game-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(5,5,8,0.85);backdrop-filter:blur(4px);z-index:10;}
+.game-overlay-title{font-family:var(--mono);font-size:20px;color:var(--text);}
+.game-overlay-sub{font-size:13px;color:var(--muted);}
+.game-start-btn{background:var(--accent);border:none;border-radius:20px;padding:10px 28px;font-family:var(--sans);font-size:14px;color:#000;cursor:pointer;font-weight:600;transition:opacity 0.15s;}
+.game-start-btn:hover{opacity:0.85;}
+/* 2048 animated board */
+.g2048-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#050508;}
+.g2048-board{position:relative;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;}
+.g2048-bg{display:grid;grid-template-columns:repeat(4,72px);grid-template-rows:repeat(4,72px);gap:8px;}
+.g2048-bgcell{border-radius:8px;background:rgba(255,255,255,0.04);}
+.g2048-tiles{position:absolute;top:10px;left:10px;width:calc(4*72px + 3*8px);height:calc(4*72px + 3*8px);}
+.g2048-tile{position:absolute;width:72px;height:72px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;color:#fff;transition:left 0.1s ease,top 0.1s ease,transform 0.08s ease;will-change:left,top,transform;z-index:1;}
+.g2048-tile.new-tile{animation:g2pop 0.18s ease forwards;}
+.g2048-tile.merged{z-index:2;}
+@keyframes g2pop{0%{transform:scale(0.5);opacity:0.7}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+/* Nullmon */
+.nm-wrap{flex:1;display:flex;flex-direction:column;background:#08080f;overflow:hidden;}
+.nm-choose{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;}
+.nm-choose-title{font-family:var(--mono);font-size:18px;letter-spacing:0.15em;color:var(--text);}
+.nm-starters{display:flex;gap:12px;}
+.nm-card{width:110px;padding:12px 8px;border-radius:12px;background:var(--surface);border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;}
+.nm-card:hover{transform:translateY(-4px);border-color:var(--accent);}
+.nm-card .nc-spr{font-size:38px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.6));}
+.nm-card .nc-name{font-size:12px;font-weight:600;color:var(--text);}
+.nm-card .nc-type{font-size:10px;text-transform:uppercase;letter-spacing:.08em;}
+.nm-explore{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.nm-topbar{height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;background:rgba(0,0,0,0.3);flex-shrink:0;}
+.nm-zone{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--sans);}
+.nm-bag-info{margin-left:auto;font-size:11px;color:var(--muted);display:flex;gap:10px;}
+.nm-team-strip{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+.nm-slot{padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:11px;display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:default;}
+.nm-slot.fainted{opacity:0.4;}
+.nm-field{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;}
+.nm-field-btn{padding:11px 26px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#000;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:transform 0.15s,opacity 0.15s;}
+.nm-field-btn:hover{transform:scale(1.04);opacity:0.9;}
+.nm-heal-btn{padding:9px 18px;border-radius:20px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;}
+.nm-heal-btn:hover{background:rgba(52,211,153,0.25);}
+/* Battle */
+.nm-battle{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.nm-bf{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:14px;background:linear-gradient(180deg,#0a0820 0%,#050510 100%);}
+.nm-fighter{display:flex;gap:12px;align-items:flex-end;}
+.nm-fighter.enemy{flex-direction:row-reverse;align-items:flex-start;}
+.nm-spr{font-size:52px;line-height:1;filter:drop-shadow(0 3px 10px rgba(0,0,0,0.8));}
+.nm-fighter.enemy .nm-spr{filter:brightness(0.65) drop-shadow(0 3px 10px rgba(0,0,0,0.8));}
+.nm-binfo{display:flex;flex-direction:column;gap:3px;min-width:150px;}
+.nm-fighter.enemy .nm-binfo{align-items:flex-end;}
+.nm-bname{font-size:13px;font-weight:600;}.nm-blvl{font-size:10px;color:var(--muted);}
+.nm-bhp-wrap{width:150px;height:7px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-top:3px;}
+.nm-bhp{height:100%;border-radius:4px;transition:width 0.4s ease,background 0.4s;}
+.nm-bexp-wrap{width:150px;height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;}
+.nm-bexp{height:100%;background:var(--accent2);border-radius:2px;transition:width 0.5s ease;}
+.nm-log{height:46px;background:rgba(0,0,0,0.45);border-radius:8px;padding:7px 11px;font-size:12px;color:var(--text);line-height:1.6;border:1px solid var(--border);overflow:hidden;flex-shrink:0;}
+.nm-actions{border-top:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:rgba(0,0,0,0.3);flex-shrink:0;}
+.nm-row{display:flex;gap:6px;}
+.nm-abtn{flex:1;padding:8px 6px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--sans);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;text-align:center;}
+.nm-abtn:hover:not(:disabled){background:var(--surface2);transform:translateY(-1px);}
+.nm-abtn:disabled{opacity:0.3;cursor:default;}
+.nm-abtn.fight{border-color:rgba(251,113,133,0.4);color:#fb7185;}
+.nm-abtn.bag{border-color:rgba(251,191,36,0.4);color:#fbbf24;}
+.nm-abtn.run{border-color:rgba(126,184,247,0.4);color:var(--accent);}
+.nm-mbtn{flex:1;padding:7px 5px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--sans);font-size:10px;cursor:pointer;transition:all 0.12s;text-align:left;}
+.nm-mbtn:hover:not(:disabled){background:var(--surface2);}
+.nm-mbtn:disabled{opacity:0.28;cursor:default;}
+.nm-mpp{font-size:9px;color:var(--muted);display:block;margin-top:1px;}
+.nm-tbadge{display:inline-block;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-left:3px;}
+</style>
+</head>
+<body>
+<div id="boot"><div class="boot-logo">NULL OS</div><div class="boot-bar"><div class="boot-fill"></div></div></div>
+<div id="desktop" class="wp-1">
+  <div id="menubar">
+    <div class="mb-logo">⬡ NULL</div><div class="mb-sep"></div>
+    <div class="mb-item" onclick="openApp('files')">Files</div>
+    <div class="mb-item" onclick="openApp('browser')">Browser</div>
+    <div class="mb-item" onclick="openApp('notes')">Notes</div>
+    <div class="mb-item" onclick="openApp('terminal')">Terminal</div>
+    <div class="mb-item" onclick="openApp('games')">Games</div>
+    <div class="mb-item" onclick="openApp('settings')">Settings</div>
+    <div class="mb-right"><div id="clock"></div></div>
+  </div>
+  <div id="desktop-area" oncontextmenu="showCtx(event,'desktop')" ondblclick="deskDblClick(event)"></div>
+  <div id="dock"></div>
+</div>
+<div id="ctx-menu"></div>
+<input type="file" id="wp-picker" accept="image/*" style="display:none" onchange="applyWallpaperFile(event)">
+<script>
+// ── STATE ────────────────────────────────────────────────────────
+let fs=JSON.parse(localStorage.getItem('nos_fs')||'null')||{home:[{name:'Welcome.txt',type:'file',content:'Welcome to NullOS!\n\nDouble-click files to open.\nRight-click the desktop for options.'},{name:'Ideas',type:'folder',children:[]},{name:'Downloads',type:'folder',children:[]}],trash:[]};
+let curPath='home',wZ=100,wins={},tHist=[],tHIdx=-1,notesVal=localStorage.getItem('nos_notes')||'';
+let winCounter=0;
+function saveFS(){localStorage.setItem('nos_fs',JSON.stringify(fs));}
+function newWid(type){return type+'_'+(++winCounter);}
+function appType(wid){return wins[wid]?.appType||'';}
+function appWins(type){return Object.keys(wins).filter(id=>wins[id]?.appType===type);}
+
+// ── BOOT / CLOCK / NOTIFY ────────────────────────────────────────
+setTimeout(()=>{document.getElementById('boot').classList.add('fade');setTimeout(()=>document.getElementById('boot').remove(),900);notify('NullOS','Welcome back.','⬡');},3200);
+function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' '+n.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
+tick();setInterval(tick,1000);
+let _nt;
+function notify(title,body,icon='🔔'){document.querySelector('.notif')?.remove();const el=document.createElement('div');el.className='notif';el.innerHTML=`<div class="n-icon">${icon}</div><div><div class="n-title">${title}</div><div class="n-body">${body}</div></div>`;document.body.appendChild(el);clearTimeout(_nt);_nt=setTimeout(()=>el.remove(),3500);}
+
+// ── CONTEXT MENU ─────────────────────────────────────────────────
+function showCtx(e,type,data=null){
+  e.preventDefault();e.stopPropagation();
+  const m=document.getElementById('ctx-menu');
+  const defs={
+    desktop:[{i:'📁',l:'New Folder',a:newFolder},{i:'📄',l:'New File',a:newFile},{sep:1},{i:'🖼️',l:'Set Wallpaper from File',a:()=>document.getElementById('wp-picker').click()},{sep:1},{i:'⚙️',l:'Settings',a:()=>openApp('settings')}],
+    'fm-item':[{i:'📖',l:'Open',a:()=>data.type==='folder'?fmNav(data.name):openFile(data)},{i:'✏️',l:'Rename',a:()=>renameItem(data)},{sep:1},{i:'🗑️',l:'Move to Trash',a:()=>trashItem(data),d:1}],
+    'trash-item':[{i:'↩️',l:'Restore',a:()=>restoreItem(data)},{i:'❌',l:'Delete Forever',a:()=>delForever(data),d:1}],
+  };
+  const items=defs[type]||[];
+  m.innerHTML=items.map(x=>x.sep?'<div class="ctx-sep"></div>':`<div class="ctx-item${x.d?' danger':''}">${x.i} ${x.l}</div>`).join('');
+  m.querySelectorAll('.ctx-item').forEach((b,i)=>b.addEventListener('click',()=>{items.filter(x=>!x.sep)[i].a();hideCtx();}));
+  m.style.cssText=`display:block;left:${Math.min(e.clientX,window.innerWidth-230)}px;top:${Math.min(e.clientY,window.innerHeight-items.length*36)}px`;
+}
+function hideCtx(){document.getElementById('ctx-menu').style.display='none';}
+document.addEventListener('click',hideCtx);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideCtx();document.querySelectorAll('.win-picker').forEach(p=>p.remove());}});
+
+// ── WINDOW MANAGER ───────────────────────────────────────────────
+function mkWin(wid,title,w,h,x,y,html,type){
+  const win=document.createElement('div');win.className='window';win.id='w-'+wid;
+  win.style.cssText=`width:${w}px;height:${h}px;left:${Math.max(4,x)}px;top:${Math.max(4,y)}px;z-index:${++wZ}`;
+  win.innerHTML=`<div class="win-titlebar" onmousedown="dragStart(event,'${wid}')">
+    <div class="win-btns">
+      <button class="win-btn win-close" onclick="closeWin('${wid}')"><i class="bi">✕</i></button>
+      <button class="win-btn win-min" onclick="minWin('${wid}')"><i class="bi">–</i></button>
+      <button class="win-btn win-max" onclick="maxWin('${wid}')"><i class="bi">⤢</i></button>
+    </div>
+    <div class="win-title">${title}</div>
+    <div style="width:46px"></div>
+  </div>
+  <div class="win-body" id="wb-${wid}">${html}</div>
+  <div class="resize-handle" onmousedown="resStart(event,'${wid}')"></div>`;
+  document.getElementById('desktop-area').appendChild(win);
+  win.addEventListener('mousedown',()=>focusWin(wid));
+  wins[wid]={el:win,minimized:false,prev:null,appType:type,title};
+  dockRefresh(type);focusWin(wid);
+  return wins[wid];
+}
+function focusWin(wid){if(!wins[wid])return;wins[wid].el.style.zIndex=++wZ;document.querySelectorAll('.window').forEach(w=>w.classList.remove('active'));wins[wid].el.classList.add('active');}
+function closeWin(wid){
+  if(!wins[wid])return;
+  const type=wins[wid].appType;
+  if(type==='games')gCleanup();
+  wins[wid].el.remove();delete wins[wid];
+  dockRefresh(type);
+}
+function minWin(wid){if(!wins[wid])return;wins[wid].el.classList.add('minimized');wins[wid].minimized=true;}
+function maxWin(wid){
+  if(!wins[wid])return;const win=wins[wid].el;
+  if(wins[wid].prev){const p=wins[wid].prev;win.style.left=p.l;win.style.top=p.t;win.style.width=p.w;win.style.height=p.h;wins[wid].prev=null;}
+  else{wins[wid].prev={l:win.style.left,t:win.style.top,w:win.style.width,h:win.style.height};const a=document.getElementById('desktop-area');win.style.cssText+=`;left:4px;top:4px;width:${a.offsetWidth-8}px;height:${a.offsetHeight-8}px`;}
+}
+let dSt=null,rSt=null;
+function dragStart(e,wid){if(e.target.closest('.win-btn'))return;const w=wins[wid]?.el;if(!w)return;focusWin(wid);dSt={wid,sx:e.clientX-w.offsetLeft,sy:e.clientY-w.offsetTop};}
+function resStart(e,wid){e.stopPropagation();const w=wins[wid]?.el;if(!w)return;rSt={wid,sx:e.clientX,sy:e.clientY,w:w.offsetWidth,h:w.offsetHeight};}
+document.addEventListener('mousemove',e=>{
+  if(dSt){const w=wins[dSt.wid]?.el;if(!w)return;const a=document.getElementById('desktop-area');w.style.left=Math.max(0,Math.min(e.clientX-dSt.sx,a.offsetWidth-80))+'px';w.style.top=Math.max(0,Math.min(e.clientY-dSt.sy,a.offsetHeight-44))+'px';}
+  if(rSt){const w=wins[rSt.wid]?.el;if(!w)return;w.style.width=Math.max(380,rSt.w+(e.clientX-rSt.sx))+'px';w.style.height=Math.max(250,rSt.h+(e.clientY-rSt.sy))+'px';}
+});
+document.addEventListener('mouseup',()=>{dSt=null;rSt=null;});
+
+// ── OPEN APP ─────────────────────────────────────────────────────
+function openApp(type,fromDock=false){
+  const existing=appWins(type);
+  if(fromDock&&existing.length>0){
+    if(existing.length===1){
+      const wid=existing[0],w=wins[wid];
+      if(w.minimized){w.el.classList.remove('minimized');w.minimized=false;}
+      focusWin(wid);return;
+    }
+    showWinPicker(type,existing);return;
+  }
+  const a=document.getElementById('desktop-area');
+  const cx=a.offsetWidth/2+(Math.random()-.5)*60,cy=a.offsetHeight/2+(Math.random()-.5)*40;
+  const wid=newWid(type);
+  ({files:openFiles,trash:openFiles,browser:openBrowser,notes:openNotes,terminal:openTerm,settings:openSettings,games:openGames})[type]?.(cx,cy,type,wid);
+}
+function showWinPicker(type,wids){
+  document.querySelectorAll('.win-picker').forEach(p=>p.remove());
+  const dockEl=document.getElementById('dock-'+type);
+  if(!dockEl)return;
+  const rect=dockEl.getBoundingClientRect();
+  const p=document.createElement('div');p.className='win-picker';
+  p.style.cssText=`left:${rect.left+rect.width/2-90}px;bottom:${window.innerHeight-rect.top+10}px;`;
+  wids.forEach((wid,i)=>{
+    const item=document.createElement('div');item.className='ctx-item';
+    const w=wins[wid];item.innerHTML=`${DOCK_APPS[type]?.icon||'🪟'} Window ${i+1}${w.minimized?' <span style="font-size:10px;color:var(--muted)">(min)</span>':''}`;
+    item.onclick=()=>{if(w.minimized){w.el.classList.remove('minimized');w.minimized=false;}focusWin(wid);p.remove();};
+    p.appendChild(item);
+  });
+  const sep=document.createElement('div');sep.className='ctx-sep';p.appendChild(sep);
+  const nw=document.createElement('div');nw.className='ctx-item';nw.innerHTML='➕ New Window';nw.onclick=()=>{openApp(type);p.remove();};p.appendChild(nw);
+  document.body.appendChild(p);
+  setTimeout(()=>document.addEventListener('click',()=>p.remove(),{once:true}),50);
+}
+
+// ── FILES ────────────────────────────────────────────────────────
+function openFiles(cx,cy,view,wid){
+  const isTrash=view==='trash';const w=680,h=460;
+  const body=`<div style="display:flex;height:100%;overflow:hidden">
+    <div class="fm-sidebar">
+      <div class="fm-nav-label">Locations</div>
+      <div class="fm-nav-item ${!isTrash?'active':''}" onclick="fmNav('home')" id="fn-home">🏠 Home</div>
+      <div class="fm-nav-item" onclick="fmNav('Downloads')" id="fn-Downloads">⬇️ Downloads</div>
+      <div class="fm-nav-item" onclick="fmNav('Ideas')" id="fn-Ideas">💡 Ideas</div>
+      <div class="fm-nav-label" style="margin-top:8px">Other</div>
+      <div class="fm-nav-item ${isTrash?'active':''}" onclick="fmNav('trash')" id="fn-trash">🗑️ Trash</div>
+    </div>
+    <div class="fm-main">
+      <div class="fm-toolbar">
+        <button class="fm-btn" onclick="newFolder()">+ Folder</button>
+        <button class="fm-btn" onclick="newFile()">+ File</button>
+        <button class="fm-btn" id="empty-trash-btn" style="display:none;color:var(--red)" onclick="emptyTrash()">Empty Trash</button>
+        <span class="fm-path" id="fm-path">~/home</span>
+      </div>
+      <div class="fm-grid" id="fm-grid"></div>
+    </div>
+  </div>`;
+  mkWin(wid,isTrash?'Trash':'Files',w,h,cx-w/2,cy-h/2,body,'files');
+  curPath=isTrash?'trash':'home';renderFM();
+}
+function fmNav(p){curPath=p;renderFM();document.querySelectorAll('.fm-nav-item').forEach(e=>e.classList.remove('active'));document.getElementById('fn-'+p)?.classList.add('active');}
+function getFSItems(){if(curPath==='trash')return fs.trash;if(curPath==='home')return fs.home;return fs.home.find(i=>i.name===curPath&&i.type==='folder')?.children||[];}
+function renderFM(){
+  const g=document.getElementById('fm-grid');if(!g)return;
+  document.getElementById('empty-trash-btn')?.style.setProperty('display',curPath==='trash'?'':'none');
+  const pe=document.getElementById('fm-path');if(pe)pe.textContent='~/'+curPath;
+  const items=getFSItems();
+  if(!items.length){g.innerHTML=`<div class="fm-empty">${curPath==='trash'?'Trash is empty':'No files here'}</div>`;return;}
+  g.innerHTML='';
+  items.forEach(item=>{
+    const el=document.createElement('div');el.className='fm-item';
+    el.innerHTML=`<div class="fm-item-icon">${item.type==='folder'?'📁':fIcon(item.name)}</div><div class="fm-item-name">${item.name}</div>`;
+    el.onclick=()=>{document.querySelectorAll('.fm-item').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');};
+    el.ondblclick=()=>item.type==='folder'?fmNav(item.name):openFile(item);
+    el.oncontextmenu=e=>showCtx(e,curPath==='trash'?'trash-item':'fm-item',item);
+    g.appendChild(el);
+  });
+}
+function fIcon(n){const e=n.split('.').pop().toLowerCase();return{txt:'📄',md:'📄',jpg:'🖼️',png:'🖼️',gif:'🖼️',svg:'🖼️',mp3:'🎵',mp4:'🎬',zip:'📦',html:'💻',js:'💻',py:'💻'}[e]||'📄';}
+function openFile(item){
+  const wid=newWid('file');const w=500,h=380;const safe=item.name.replace(/\W/g,'_');const a=document.getElementById('desktop-area');
+  mkWin(wid,item.name,w,h,a.offsetWidth/2-w/2,a.offsetHeight/2-h/2,`<div class="notes-app"><textarea class="notes-ed" id="fe-${safe}" placeholder="Empty file...">${(item.content||'').replace(/</g,'&lt;')}</textarea></div>`,'file');
+  setTimeout(()=>{const t=document.getElementById('fe-'+safe);if(t)t.addEventListener('input',()=>{item.content=t.value;saveFS();});},50);
+}
+function newFolder(){const n=prompt('Folder name:');if(!n)return;(curPath==='home'?fs.home:(fs.home.find(i=>i.name===curPath&&i.type==='folder')?.children||fs.home)).push({name:n,type:'folder',children:[]});saveFS();renderFM();notify('Files',`"${n}" created`,'📁');}
+function newFile(){const n=prompt('File name:');if(!n)return;const it={name:n,type:'file',content:''};(curPath==='home'?fs.home:(fs.home.find(i=>i.name===curPath&&i.type==='folder')?.children||fs.home)).push(it);saveFS();renderFM();}
+function trashItem(item){const arr=getFSItems();arr.splice(arr.indexOf(item),1);item._from=curPath;fs.trash.push(item);saveFS();renderFM();}
+function restoreItem(item){fs.trash.splice(fs.trash.indexOf(item),1);const d=item._from||'home';(d==='home'?fs.home:(fs.home.find(x=>x.name===d&&x.type==='folder')?.children||fs.home)).push(item);saveFS();renderFM();}
+function delForever(item){if(!confirm(`Delete "${item.name}" forever?`))return;fs.trash.splice(fs.trash.indexOf(item),1);saveFS();renderFM();}
+function emptyTrash(){if(!fs.trash.length)return;if(!confirm('Permanently delete all?'))return;fs.trash=[];saveFS();renderFM();}
+function renameItem(item){const n=prompt('New name:',item.name);if(!n)return;item.name=n;saveFS();renderFM();}
+
+// ── BROWSER (multi-instance, per-window state) ───────────────────
+let _cfWorker=localStorage.getItem('nos_cf_worker')||'';
+function getBRProxies(){
+  const list=[];
+  if(_cfWorker)list.push(u=>`${_cfWorker.replace(/\/$/,'')}/?url=${encodeURIComponent(u)}`);
+  list.push(
+    u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.org/?${encodeURIComponent(u)}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u=>`https://proxy.cors.sh/${u}`,
+    u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+    u=>`https://cors.eu.org/${u}`,
+  );
+  return list;
+}
+function openBrowser(cx,cy,type,wid){
+  const w=980,h=660;
+  const html=`<div style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+    <div class="br-tabs" id="brtabs_${wid}"></div>
+    <div class="browser-bar">
+      <button class="br-nav" id="brback_${wid}" onclick="brBack('${wid}')" disabled>←</button>
+      <button class="br-nav" id="brfwd_${wid}" onclick="brFwd('${wid}')" disabled>→</button>
+      <button class="br-nav" onclick="brRefresh('${wid}')">↻</button>
+      <input class="br-url" id="brurl_${wid}" placeholder="Search or enter a URL…" onkeydown="if(event.key==='Enter')brNav('${wid}')">
+      <button class="br-go" onclick="brNav('${wid}')">Go</button>
+    </div>
+    <div id="brcont_${wid}" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+  </div>`;
+  const entry=mkWin(wid,'Browser',w,h,cx-w/2,cy-h/2,html,'browser');
+  entry.br={tabs:[],active:null,tc:0};
+  setTimeout(()=>brNewTab(wid),60);
+}
+function brS(wid){return wins[wid]?.br;}
+function brNewTab(wid,url){
+  const s=brS(wid);if(!s)return;
+  const tid='t'+(++s.tc);s.tabs.push({id:tid,title:'New Tab',url:'',hist:[],hi:-1});s.active=tid;
+  brTabBar(wid);if(url)brLoad(wid,url);else brHome(wid);brNav2(wid);
+}
+function brTabBar(wid){
+  const bar=document.getElementById('brtabs_'+wid);if(!bar)return;const s=brS(wid);if(!s)return;
+  bar.innerHTML='';
+  s.tabs.forEach(tab=>{
+    const t=document.createElement('div');t.className='br-tab'+(tab.id===s.active?' active':'');
+    t.innerHTML=`<span class="br-tab-title">${tab.title}</span><span class="br-tab-close" onclick="event.stopPropagation();brCloseTab('${wid}','${tab.id}')">✕</span>`;
+    t.onclick=()=>brSwitch(wid,tab.id);bar.appendChild(t);
+  });
+  const nb=document.createElement('button');nb.className='br-new-tab';nb.textContent='＋';nb.onclick=()=>brNewTab(wid);bar.appendChild(nb);
+}
+function brSwitch(wid,tid){
+  const s=brS(wid);if(!s)return;s.active=tid;brTabBar(wid);
+  const tab=s.tabs.find(t=>t.id===tid);if(!tab)return;
+  const u=document.getElementById('brurl_'+wid);if(u)u.value=tab.url||'';
+  if(tab.url)brRender(wid,tab.url);else brHome(wid);brNav2(wid);
+}
+function brCloseTab(wid,tid){
+  const s=brS(wid);if(!s)return;const idx=s.tabs.findIndex(t=>t.id===tid);if(idx<0)return;
+  s.tabs.splice(idx,1);if(!s.tabs.length){closeWin(wid);return;}
+  if(s.active===tid)s.active=s.tabs[Math.max(0,idx-1)].id;brSwitch(wid,s.active);
+}
+function brHome(wid){
+  const c=document.getElementById('brcont_'+wid);if(!c)return;
+  c.innerHTML=`<div class="br-newtab">
+    <div class="s-logo" style="font-size:22px">NULL BROWSER</div>
+    <div class="s-bar" style="max-width:540px">
+      <span style="color:var(--muted)">🔍</span>
+      <input id="ntinp_${wid}" placeholder="Search or enter a URL…" onkeydown="if(event.key==='Enter'){var q=this.value.trim();if(q){document.getElementById('brurl_${wid}').value=q;brNav('${wid}');}}">
+      <button class="s-btn" onclick="var q=document.getElementById('ntinp_${wid}').value.trim();if(q){document.getElementById('brurl_${wid}').value=q;brNav('${wid}');}">Go</button>
+    </div>
+    <div class="shortcuts">
+      ${[{e:'🔍',l:'DuckDuckGo',u:'https://html.duckduckgo.com/html/'},{e:'📚',l:'Wikipedia',u:'https://en.m.wikipedia.org/wiki/Main_Page'},{e:'🐙',l:'GitHub',u:'https://github.com'},{e:'📰',l:'HackerNews',u:'https://news.ycombinator.com'},{e:'🗞️',l:'BBC News',u:'https://www.bbc.com/news'},{e:'📖',l:'Archive.org',u:'https://archive.org'},{e:'🎮',l:'itch.io',u:'https://itch.io'}].map(s=>`<div class="sc" onclick="brLoad('${wid}','${s.u}')">${s.e} ${s.l}</div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.9;max-width:400px">
+      Uses server-side relay servers to load pages — same technique as Utopia &amp; school proxies.<br>
+      <span style="color:var(--accent)">Login sessions</span> (Discord, Google…) won't transfer through a relay.
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('ntinp_'+wid)?.focus(),50);
+}
+function brNav(wid){
+  let v=(document.getElementById('brurl_'+wid)?.value||'').trim();if(!v)return;
+  if(!v.startsWith('http')&&!v.includes('.'))v='https://html.duckduckgo.com/html/?q='+encodeURIComponent(v);
+  else if(!v.startsWith('http'))v='https://'+v;
+  brLoad(wid,v);
+}
+function brLoad(wid,url){
+  const s=brS(wid);if(!s)return;const tab=s.tabs.find(t=>t.id===s.active);if(!tab)return;
+  const u=document.getElementById('brurl_'+wid);if(u)u.value=url;
+  tab.url=url;tab.hist=tab.hist.slice(0,tab.hi+1);tab.hist.push(url);tab.hi=tab.hist.length-1;
+  brNav2(wid);brRender(wid,url);
+}
+async function brRender(wid,url){
+  const c=document.getElementById('brcont_'+wid);if(!c)return;
+  const s=brS(wid);const tab=s?.tabs.find(t=>t.id===s.active);
+  const host=url.replace(/^https?:\/\//,'').split('/')[0].replace(/^www\./,'');
+  if(!document.getElementById('_spinstyle')){const st=document.createElement('style');st.id='_spinstyle';st.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(st);}
+  c.innerHTML=`<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
+    <div style="width:28px;height:28px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite"></div>
+    <div id="brlbl_${wid}" style="font-size:12px;color:var(--muted)">Connecting to <b style="color:var(--text)">${host}</b>…</div>
+  </div>`;
+  let html=null;
+  const proxies=getBRProxies();
+  for(let i=0;i<proxies.length;i++){
+    const lbl=document.getElementById('brlbl_'+wid);
+    const label=i===0&&_cfWorker?`<span style="color:#34d399">Your Worker</span>`:`relay ${i+1}/${proxies.length}`;
+    if(lbl)lbl.innerHTML=`Trying ${label} for <b style="color:var(--text)">${host}</b>…`;
+    try{
+      const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
+      const resp=await fetch(proxies[i](url),{signal:ctrl.signal});clearTimeout(tid);
+      if(resp.ok){const text=await resp.text();if(text&&text.trim().length>100){html=text;break;}}
+    }catch(e){}
+  }
+  if(!c.isConnected)return;
+  if(html){
+    const fixed=html
+      .replace(/(<head[^>]*>)/i,`$1<base href="${url}">`)
+      .replace(/target=["']_blank["']/gi,'target="_self"')
+      .replace(/window\.open\s*\(/g,'void(');
+    const blob=new Blob([fixed],{type:'text/html'});const blobUrl=URL.createObjectURL(blob);
+    c.innerHTML='';
+    const iframe=document.createElement('iframe');
+    iframe.style.cssText='flex:1;width:100%;height:100%;border:none;background:#fff;';
+    iframe.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups-to-escape-sandbox allow-modals');
+    iframe.src=blobUrl;
+    iframe.onload=()=>{try{const t=iframe.contentDocument?.title;if(tab&&t){tab.title=t.slice(0,22)||host;brTabBar(wid);}}catch(e){if(tab){tab.title=host;brTabBar(wid);}}URL.revokeObjectURL(blobUrl);};
+    c.appendChild(iframe);
+  } else {
+    const esc=url.replace(/'/g,"\\'");
+    c.innerHTML=`<div class="br-blocked">
+      <div style="font-size:40px">🚫</div>
+      <div style="color:var(--text);font-size:15px;font-weight:600">${host} — blocked</div>
+      <div style="font-size:12px;color:var(--muted);max-width:420px;line-height:1.9;text-align:center">
+        All relay servers failed. This site blocks third-party relays, or requires a login session that can't transfer through a relay.<br><br>
+        ${_cfWorker?'<span style="color:#34d399">✅ Your Cloudflare Worker was tried first.</span>':'<span style="color:var(--accent)">💡 Add your Cloudflare Worker in Settings for better coverage.</span>'}<br><br>
+        <span style="color:var(--accent)">✅ Works great:</span> Wikipedia · GitHub · HackerNews · BBC · Archive.org · itch.io
+      </div>
+      <button class="br-go" style="margin-top:8px;background:var(--surface);color:var(--text);border:1px solid var(--border2)" onclick="brRender('${wid}','${esc}')">↺ Retry</button>
+    </div>`;
+  }
+}
+function brBack(wid){const s=brS(wid);if(!s)return;const tab=s.tabs.find(t=>t.id===s.active);if(!tab||tab.hi<=0)return;tab.hi--;const url=tab.hist[tab.hi];tab.url=url;document.getElementById('brurl_'+wid).value=url;brRender(wid,url);brNav2(wid);}
+function brFwd(wid){const s=brS(wid);if(!s)return;const tab=s.tabs.find(t=>t.id===s.active);if(!tab||tab.hi>=tab.hist.length-1)return;tab.hi++;const url=tab.hist[tab.hi];tab.url=url;document.getElementById('brurl_'+wid).value=url;brRender(wid,url);brNav2(wid);}
+function brRefresh(wid){const s=brS(wid);if(!s)return;const tab=s.tabs.find(t=>t.id===s.active);if(tab?.url)brRender(wid,tab.url);}
+function brNav2(wid){const s=brS(wid);const tab=s?.tabs.find(t=>t.id===s.active);document.getElementById('brback_'+wid)?.toggleAttribute('disabled',!tab||tab.hi<=0);document.getElementById('brfwd_'+wid)?.toggleAttribute('disabled',!tab||tab.hi>=tab.hist.length-1);}
+
+// ── NOTES ────────────────────────────────────────────────────────
+function openNotes(cx,cy,type,wid){
+  const w=500,h=420;
+  mkWin(wid,'Notes',w,h,cx-w/2,cy-h/2,`<div class="notes-app"><div class="notes-tb"><span style="font-size:12px;color:var(--muted)">📝 Notes</span><button class="fm-btn" style="margin-left:auto" onclick="saveNotes('${wid}')">Save</button><button class="fm-btn" onclick="saveNoteFile('${wid}')">Save as File</button></div><textarea class="notes-ed" id="ned_${wid}" placeholder="Start typing…">${notesVal}</textarea></div>`,'notes');
+  setTimeout(()=>{const t=document.getElementById('ned_'+wid);if(t)t.addEventListener('input',()=>notesVal=t.value);},50);
+}
+function saveNotes(wid){const t=document.getElementById('ned_'+wid);if(t)notesVal=t.value;localStorage.setItem('nos_notes',notesVal);notify('Notes','Saved!','📝');}
+function saveNoteFile(wid){const t=document.getElementById('ned_'+wid);if(t)notesVal=t.value;const n=prompt('Save as:','note.txt');if(!n)return;fs.home.push({name:n,type:'file',content:notesVal});saveFS();}
+
+// ── TERMINAL ─────────────────────────────────────────────────────
+function openTerm(cx,cy,type,wid){
+  const w=560,h=380;
+  mkWin(wid,'Terminal',w,h,cx-w/2,cy-h/2,`<div class="terminal" id="tout_${wid}"><div class="t-line"><span class="t-out" style="color:var(--accent)">NullOS Terminal v2.0 — type 'help'</span></div></div><div style="border-top:1px solid var(--border);padding:8px 14px;display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.3)"><span class="t-prompt">❯</span><input class="t-input" id="tin_${wid}" autocomplete="off" onkeydown="tKey(event,'${wid}')"></div>`,'terminal');
+  setTimeout(()=>document.getElementById('tin_'+wid)?.focus(),80);
+}
+function tKey(e,wid){if(e.key==='Enter'){tRun(e.target.value.trim(),wid);e.target.value='';tHIdx=-1;}if(e.key==='ArrowUp'){tHIdx=Math.min(tHIdx+1,tHist.length-1);e.target.value=tHist[tHIdx]||'';}if(e.key==='ArrowDown'){tHIdx=Math.max(tHIdx-1,-1);e.target.value=tHIdx<0?'':tHist[tHIdx];}}
+function tPrint(txt,cls,wid){const o=document.getElementById('tout_'+wid);if(!o)return;const l=document.createElement('div');l.className='t-line';l.innerHTML=`<span class="${cls||'t-out'}">${txt}</span>`;o.appendChild(l);o.scrollTop=o.scrollHeight;}
+function tRun(raw,wid){if(!raw)return;tHist.unshift(raw);tPrint(`❯ ${raw}`,'t-prompt',wid);const[cmd,...args]=raw.trim().split(/\s+/);({help:()=>tPrint('help ls clear date echo whoami neofetch',null,wid),ls:()=>tPrint(fs.home.map(i=>(i.type==='folder'?'📁 ':'📄 ')+i.name).join('  ')||'(empty)',null,wid),clear:()=>{document.getElementById('tout_'+wid).innerHTML='';},date:()=>tPrint(new Date().toString(),null,wid),echo:()=>tPrint(args.join(' '),null,wid),whoami:()=>tPrint('user@nullos',null,wid),neofetch:()=>{tPrint(`<span style="color:var(--accent)">  ⬡⬡⬡⬡  </span>  <b>user@nullos</b>`,null,wid);tPrint(`<span style="color:var(--accent)">⬡⬡⬡⬡⬡⬡⬡⬡</span>  OS: NullOS 2.0`,null,wid);tPrint(`<span style="color:var(--accent)">  ⬡⬡⬡⬡  </span>  Files: ${fs.home.length} items`,null,wid);}}[cmd]||(() =>tPrint(`Command not found: ${cmd}`,'t-err',wid)))();}
+
+// ── SETTINGS ─────────────────────────────────────────────────────
+function openSettings(cx,cy,type,wid){
+  const w=480,h=460;
+  const sw=[{c:'wp-1',l:'Void'},{c:'wp-2',l:'Crimson'},{c:'wp-3',l:'Forest'},{c:'wp-4',l:'Amber'},{c:'wp-5',l:'Abyss'}];
+  mkWin(wid,'Settings',w,h,cx-w/2,cy-h/2,`<div class="settings-app"><div class="s-section"><div class="s-title">Wallpaper</div><div class="wp-grid">${sw.map(s=>`<div class="wp-swatch ${s.c}" title="${s.l}" onclick="setWP('${s.c}')"></div>`).join('')}<div class="wp-upload" onclick="document.getElementById('wp-picker').click()">📷</div></div></div><div class="s-section"><div class="s-title">System</div><div class="s-row"><div><div style="font-size:14px">Reset Files</div><div style="font-size:12px;color:var(--muted)">Clear to default</div></div><button class="fm-btn" style="color:var(--red)" onclick="resetFS()">Reset</button></div><div class="s-row" style="margin-top:4px"><div><div style="font-size:14px">Reset Dock</div><div style="font-size:12px;color:var(--muted)">Restore defaults</div></div><button class="fm-btn" onclick="resetDock()">Reset</button></div><div class="s-row" style="margin-top:4px"><div style="font-size:14px">Version</div><span style="font-family:var(--mono);font-size:12px;color:var(--muted)">NullOS 2.0</span></div></div><div class="s-section"><div class="s-title">🌐 Cloudflare Worker Proxy</div><div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.7">Your personal relay server — faster &amp; more reliable than shared proxies. See the setup guide.</div><div style="display:flex;gap:8px;align-items:center"><input id="cf-worker-input" placeholder="https://my-proxy.yourname.workers.dev" style="flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;" value="${_cfWorker}"><button class="fm-btn" onclick="saveCFWorker()">Save</button><button class="fm-btn" style="color:var(--red)" onclick="clearCFWorker()">Clear</button></div><div id="cf-status" style="font-size:11px;margin-top:8px;color:${_cfWorker?'#34d399':'var(--muted)'};">${_cfWorker?'✅ Worker active — used as first relay':'⚪ No worker set — using shared relays only'}</div></div></div>`,'settings');
+  setTimeout(()=>{const cur=localStorage.getItem('nos_wp')||'wp-1';document.querySelectorAll('.wp-swatch').forEach(e=>e.classList.toggle('active',e.classList.contains(cur)));},50);
+}
+function setWP(cls){const d=document.getElementById('desktop');['wp-1','wp-2','wp-3','wp-4','wp-5'].forEach(c=>d.classList.remove(c));d.classList.add(cls);d.style.backgroundImage='';localStorage.setItem('nos_wp',cls);localStorage.removeItem('nos_wp_img');document.querySelectorAll('.wp-swatch').forEach(e=>e.classList.toggle('active',e.classList.contains(cls)));notify('Settings','Wallpaper updated','🖼️');}
+function saveCFWorker(){const v=(document.getElementById('cf-worker-input')?.value||'').trim();if(v&&!v.startsWith('http')){notify('Worker','URL must start with https://','❌');return;}_cfWorker=v;localStorage.setItem('nos_cf_worker',v);const st=document.getElementById('cf-status');if(st){st.textContent=v?'✅ Worker active — used as first relay':'⚪ No worker set — using shared relays only';st.style.color=v?'#34d399':'var(--muted)';}notify('Settings',v?'Worker saved! It\'ll be used first for all page loads.':'Worker cleared','🌐');}
+function clearCFWorker(){_cfWorker='';localStorage.removeItem('nos_cf_worker');const inp=document.getElementById('cf-worker-input');if(inp)inp.value='';const st=document.getElementById('cf-status');if(st){st.textContent='⚪ No worker set — using shared relays only';st.style.color='var(--muted)';}notify('Settings','Worker cleared','🌐');}
+function applyWallpaperFile(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{const url=ev.target.result;const d=document.getElementById('desktop');['wp-1','wp-2','wp-3','wp-4','wp-5'].forEach(c=>d.classList.remove(c));d.style.backgroundImage=`url(${url})`;d.style.backgroundSize='cover';d.style.backgroundPosition='center';try{localStorage.setItem('nos_wp_img',url);localStorage.setItem('nos_wp','custom');}catch(err){}notify('Wallpaper','Custom wallpaper set!','🖼️');};r.readAsDataURL(file);e.target.value='';}
+function resetFS(){if(!confirm('Reset all files?'))return;fs={home:[{name:'Welcome.txt',type:'file',content:'Welcome to NullOS!'},{name:'Ideas',type:'folder',children:[]},{name:'Downloads',type:'folder',children:[]}],trash:[]};saveFS();notify('Settings','File system reset','🔄');}
+
+// ── GAMES ────────────────────────────────────────────────────────
+const GAME_CARDS=`
+  <div class="game-card" onclick="gStart('snake',_gWid)"><div class="gc-icon">🐍</div><div class="gc-name">Snake</div><div class="gc-desc">Classic</div></div>
+  <div class="game-card" onclick="gStart('g2048',_gWid)"><div class="gc-icon">🔢</div><div class="gc-name">2048</div><div class="gc-desc">Slide &amp; merge</div></div>
+  <div class="game-card" onclick="gStart('breakout',_gWid)"><div class="gc-icon">🧱</div><div class="gc-name">Breakout</div><div class="gc-desc">Break the wall</div></div>
+  <div class="game-card" onclick="gStart('tetris',_gWid)"><div class="gc-icon">🟦</div><div class="gc-name">Tetris</div><div class="gc-desc">Stack blocks</div></div>`;
+function openGames(cx,cy,type,wid){
+  const w=660,h=520;
+  mkWin(wid,'Games',w,h,cx-w/2,cy-h/2,`<div class="games-app" id="gapp_${wid}"><div class="games-menu"><div class="games-title">🎮 ARCADE</div><div class="games-grid">${GAME_CARDS.replaceAll('_gWid',"'"+wid+"'")}</div></div></div>`,'games');
+}
+function gCleanup(){
+  if(window._snakeKey){document.removeEventListener('keydown',window._snakeKey);window._snakeKey=null;}
+  clearInterval(window._snake?.timer);
+  if(window._2048Key){document.removeEventListener('keydown',window._2048Key);window._2048Key=null;}
+  if(window._tetKey){document.removeEventListener('keydown',window._tetKey);window._tetKey=null;}
+  clearInterval(window._tet?.timer);
+  clearInterval(window._brk?.timer);
+  if(window._brkKey){document.removeEventListener('keydown',window._brkKey);document.removeEventListener('keyup',window._brkKey);window._brkKey=null;}
+  const cv=document.getElementById('brk-canvas');if(cv&&window._brkMouse){cv.removeEventListener('mousemove',window._brkMouse);window._brkMouse=null;}
+}
+function gStart(game,wid){
+  const c=document.getElementById('gapp_'+wid);if(!c)return;gCleanup();
+  ({snake:gSnake,g2048:gG2048,breakout:gBreakout,tetris:gTetris})[game]?.(c,wid);
+}
+function gMenu(wid){
+  const c=document.getElementById('gapp_'+wid);if(!c)return;gCleanup();
+  c.innerHTML=`<div class="games-menu"><div class="games-title">🎮 ARCADE</div><div class="games-grid">${GAME_CARDS.replaceAll('_gWid',"'"+wid+"'")}</div></div>`;
+}
+
+// ── SNAKE ─────────────────────────────────────────────────────────
+function gSnake(c,wid){
+  const SZ=18,CO=22,RO=18;
+  c.innerHTML=`<div class="game-view"><div class="game-hdr"><button class="game-hdr-back" onclick="gMenu('${wid}')">← Games</button><span style="font-family:var(--mono);font-size:13px;margin-left:8px">Snake</span><span class="game-score" id="snksc">Score: 0</span></div><div class="game-canvas-wrap"><canvas class="game-canvas" id="snkcv" width="${CO*SZ}" height="${RO*SZ}"></canvas><div class="game-overlay" id="snkov"><div class="game-overlay-title">🐍 Snake</div><div class="game-overlay-sub">Arrow keys / WASD</div><button class="game-start-btn" onclick="gSnakeStart()">Start</button></div></div></div>`;
+  window._snake={score:0,dir:{x:1,y:0},nx:1,ny:0,body:[{x:5,y:9},{x:4,y:9},{x:3,y:9}],food:{x:15,y:9},running:false,timer:null,CO,RO,SZ};
+}
+function gSnakeStart(){const s=window._snake;document.getElementById('snkov')?.remove();s.body=[{x:5,y:9},{x:4,y:9},{x:3,y:9}];s.dir={x:1,y:0};s.nx=1;s.ny=0;s.score=0;s.running=true;gSnakeFood();clearInterval(s.timer);s.timer=setInterval(gSnakeTick,125);window._snakeKey=e=>{if(!s.running)return;const k=e.key;if((k==='ArrowUp'||k==='w')&&s.dir.y===0){s.nx=0;s.ny=-1;}if((k==='ArrowDown'||k==='s')&&s.dir.y===0){s.nx=0;s.ny=1;}if((k==='ArrowLeft'||k==='a')&&s.dir.x===0){s.nx=-1;s.ny=0;}if((k==='ArrowRight'||k==='d')&&s.dir.x===0){s.nx=1;s.ny=0;}};document.addEventListener('keydown',window._snakeKey);}
+function gSnakeTick(){const s=window._snake;if(!s||!s.running)return;s.dir.x=s.nx;s.dir.y=s.ny;const h={x:s.body[0].x+s.dir.x,y:s.body[0].y+s.dir.y};if(h.x<0||h.x>=s.CO||h.y<0||h.y>=s.RO||s.body.some(b=>b.x===h.x&&b.y===h.y)){s.running=false;clearInterval(s.timer);const wrap=document.querySelector('.game-canvas-wrap');if(wrap){const ov=document.createElement('div');ov.className='game-overlay';ov.innerHTML=`<div class="game-overlay-title">Game Over</div><div class="game-overlay-sub">Score: ${s.score}</div><button class="game-start-btn" onclick="gSnakeStart()">Play Again</button>`;wrap.appendChild(ov);}return;}s.body.unshift(h);if(h.x===s.food.x&&h.y===s.food.y){s.score+=10;document.getElementById('snksc').textContent='Score: '+s.score;gSnakeFood();}else s.body.pop();gSnakeDraw();}
+function gSnakeFood(){const s=window._snake;let f;do{f={x:Math.floor(Math.random()*s.CO),y:Math.floor(Math.random()*s.RO)};}while(s.body.some(b=>b.x===f.x&&b.y===f.y));s.food=f;gSnakeDraw();}
+function gSnakeDraw(){const s=window._snake;const cv=document.getElementById('snkcv');if(!cv)return;const g=cv.getContext('2d');g.fillStyle='#050508';g.fillRect(0,0,s.CO*s.SZ,s.RO*s.SZ);g.fillStyle='rgba(255,255,255,0.025)';for(let x=0;x<s.CO;x++)for(let y=0;y<s.RO;y++)if((x+y)%2===0)g.fillRect(x*s.SZ,y*s.SZ,s.SZ,s.SZ);g.fillStyle='#ff5f57';g.beginPath();g.arc(s.food.x*s.SZ+s.SZ/2,s.food.y*s.SZ+s.SZ/2,s.SZ/2-1,0,Math.PI*2);g.fill();s.body.forEach((b,i)=>{g.fillStyle=i===0?'#7eb8f7':i<3?'#5da3e8':'#4a8fd4';g.beginPath();g.roundRect(b.x*s.SZ+1,b.y*s.SZ+1,s.SZ-2,s.SZ-2,3);g.fill();});}
+
+// ── 2048 (animated sliding tiles) ────────────────────────────────
+const G_SZ=80,G_GAP=8,G_TILE=72;
+function g2L(col){return col*(G_TILE+G_GAP);}
+function g2T(row){return row*(G_TILE+G_GAP);}
+const G2_COLORS={0:'#111',2:'#1e3a5f',4:'#1a4a5f',8:'#2d4a1f',16:'#4f2e12',32:'#5a1f1f',64:'#4a1050',128:'#1a4a2f',256:'#0a2a5f',512:'#3f1060',1024:'#5f3f10',2048:'#7eb8f7'};
+function g2col(v){return G2_COLORS[v]||'#7eb8f7';}
+function g2fs(v){return v>=1000?'13px':v>=100?'16px':'20px';}
+let g2tc=0;
+
+function gG2048(c,wid){
+  const bw=4*G_TILE+3*G_GAP,bh=4*G_TILE+3*G_GAP;
+  c.innerHTML=`<div class="game-view"><div class="game-hdr"><button class="game-hdr-back" onclick="gMenu('${wid}')">← Games</button><span style="font-family:var(--mono);font-size:13px;margin-left:8px">2048</span><span class="game-score" id="g2sc">Score: 0</span><button class="game-hdr-back" style="margin-left:8px" onclick="g2Start()">New</button></div><div class="g2048-wrap"><div class="g2048-board"><div class="g2048-bg">${Array(16).fill('<div class="g2048-bgcell"></div>').join('')}</div><div class="g2048-tiles" id="g2tiles"></div></div></div><div style="text-align:center;font-size:11px;color:var(--muted);padding:7px;background:#050508">Arrow keys — reach 2048!</div></div>`;
+  window._g2={tiles:new Map(),board:Array.from({length:4},()=>Array(4).fill(0)),score:0,anim:false};
+  g2Start();
+  window._2048Key=e=>{const d={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d'}[e.key];if(d){e.preventDefault();g2Move(d);}};
+  document.addEventListener('keydown',window._2048Key);
+}
+function g2Start(){
+  const g=window._g2;if(!g)return;
+  g.tiles.clear();g.board=Array.from({length:4},()=>Array(4).fill(0));g.score=0;g.anim=false;
+  document.querySelectorAll('.g2048-tile').forEach(e=>e.remove());
+  document.getElementById('g2048-ov')?.remove();
+  g2Spawn();g2Spawn();g2Draw(true);
+}
+function g2Spawn(){
+  const g=window._g2;const empty=[];
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(!g.board[r][c])empty.push([r,c]);
+  if(!empty.length)return 0;
+  const[r,c]=empty[Math.floor(Math.random()*empty.length)];
+  const id=++g2tc,val=Math.random()<0.88?2:4;
+  g.board[r][c]=id;g.tiles.set(id,{val,r,c,pr:r,pc:c,isNew:true,merged:false});
+  return id;
+}
+function g2Draw(instant=false){
+  const g=window._g2;const sc=document.getElementById('g2sc');if(sc)sc.textContent='Score: '+g.score;
+  const layer=document.getElementById('g2tiles');if(!layer)return;
+  const existing=new Map();layer.querySelectorAll('.g2048-tile').forEach(el=>existing.set(el.id,el));
+  g.tiles.forEach((t,id)=>{
+    const lid='g2t'+id;let el=existing.get(lid);
+    const newL=g2L(t.c),newT=g2T(t.r);
+    if(!el){
+      el=document.createElement('div');el.id=lid;el.className='g2048-tile';
+      el.style.cssText=`left:${instant?newL:g2L(t.pc)}px;top:${instant?newT:g2T(t.pr)}px;background:${g2col(t.val)};font-size:${g2fs(t.val)};`;
+      el.textContent=t.val;layer.appendChild(el);
+      if(t.isNew&&!instant){el.classList.add('new-tile');setTimeout(()=>el.classList.remove('new-tile'),200);}
+      t.isNew=false;
+    } else {
+      existing.delete(lid);
+      if(!instant){
+        el.style.left=newL+'px';el.style.top=newT+'px';
+        if(t.merged){el.classList.add('merged');setTimeout(()=>{el.classList.remove('merged');el.style.background=g2col(t.val);el.style.fontSize=g2fs(t.val);el.textContent=t.val;},120);}
+        else{el.style.background=g2col(t.val);el.style.fontSize=g2fs(t.val);el.textContent=t.val;}
+      } else {el.style.left=newL+'px';el.style.top=newT+'px';}
+      t.merged=false;t.isNew=false;
+    }
+  });
+  existing.forEach(el=>el.remove());
+}
+function g2Move(dir){
+  const g=window._g2;if(g.anim)return;
+  g.tiles.forEach(t=>{t.pr=t.r;t.pc=t.c;t.merged=false;t.isNew=false;});
+  let moved=false;const toRemove=[];
+  for(let line=0;line<4;line++){
+    let coords=[];
+    if(dir==='l')coords=[0,1,2,3].map(c=>[line,c]);
+    else if(dir==='r')coords=[3,2,1,0].map(c=>[line,c]);
+    else if(dir==='u')coords=[0,1,2,3].map(r=>[r,line]);
+    else coords=[3,2,1,0].map(r=>[r,line]);
+    const ids=coords.filter(([r,c])=>g.board[r][c]).map(([r,c])=>({id:g.board[r][c],r,c}));
+    coords.forEach(([r,c])=>g.board[r][c]=0);
+    let wi=0,skip=false;
+    for(let i=0;i<ids.length;i++){
+      if(skip){skip=false;continue;}
+      const {id}=ids[i];const t=g.tiles.get(id);const [wr,wc]=coords[wi];
+      if(i+1<ids.length){
+        const nid=ids[i+1].id;const nt=g.tiles.get(nid);
+        if(t.val===nt.val){
+          nt.r=wr;nt.c=wc;t.val*=2;t.r=wr;t.c=wc;t.merged=true;g.board[wr][wc]=id;g.score+=t.val;
+          toRemove.push(nid);skip=true;moved=true;wi++;continue;
+        }
+      }
+      if(t.r!==wr||t.c!==wc)moved=true;
+      t.r=wr;t.c=wc;g.board[wr][wc]=id;wi++;
+    }
+  }
+  if(!moved)return;
+  g2Draw(false);
+  g.anim=true;
+  setTimeout(()=>{
+    toRemove.forEach(id=>{g.tiles.delete(id);document.getElementById('g2t'+id)?.remove();});
+    const nid=g2Spawn();
+    if(nid){
+      const t=g.tiles.get(nid);const el=document.createElement('div');el.id='g2t'+nid;el.className='g2048-tile new-tile';
+      el.style.cssText=`left:${g2L(t.c)}px;top:${g2T(t.r)}px;background:${g2col(t.val)};font-size:${g2fs(t.val)}`;
+      el.textContent=t.val;document.getElementById('g2tiles')?.appendChild(el);
+      setTimeout(()=>el.classList.remove('new-tile'),200);t.isNew=false;
+    }
+    const sc=document.getElementById('g2sc');if(sc)sc.textContent='Score: '+g.score;
+    g.anim=false;
+    if(g2Over()){const layer=document.getElementById('g2tiles');if(layer){const ov=document.createElement('div');ov.id='g2048-ov';ov.className='game-overlay';ov.style.borderRadius='12px';ov.innerHTML=`<div class="game-overlay-title">Game Over</div><div class="game-overlay-sub">Score: ${g.score}</div><button class="game-start-btn" onclick="g2Start()">Again</button>`;layer.parentElement.appendChild(ov);}}
+  },130);
+}
+function g2Over(){const g=window._g2;for(let r=0;r<4;r++)for(let c=0;c<4;c++){if(!g.board[r][c])return false;const v=g.tiles.get(g.board[r][c]).val;if(c<3&&g.board[r][c+1]&&g.tiles.get(g.board[r][c+1]).val===v)return false;if(r<3&&g.board[r+1][c]&&g.tiles.get(g.board[r+1][c]).val===v)return false;}return true;}
+
+// ── BREAKOUT (Pong-smooth paddle) ────────────────────────────────
+function gBreakout(c,wid){
+  const W=440,H=340;
+  c.innerHTML=`<div class="game-view"><div class="game-hdr"><button class="game-hdr-back" onclick="gMenu('${wid}')">← Games</button><span style="font-family:var(--mono);font-size:13px;margin-left:8px">Breakout</span><span class="game-score" id="brksc">Score: 0 | Lives: 3</span></div><div class="game-canvas-wrap"><canvas class="game-canvas" id="brk-canvas" width="${W}" height="${H}"></canvas><div class="game-overlay" id="brkOv"><div class="game-overlay-title">🧱 Breakout</div><div class="game-overlay-sub">Mouse · hold ← → to move</div><button class="game-start-btn" onclick="gBrkStart()">Start</button></div></div></div>`;
+  window._brk={running:false,score:0,lives:3,px:185,pw:72,targetX:185,bx:220,by:290,bdx:3.2,bdy:-3.2,bricks:[],W,H,timer:null,keys:{}};
+  window._brkMouse=e=>{const cv=document.getElementById('brk-canvas');if(!cv)return;const rect=cv.getBoundingClientRect();window._brk.targetX=Math.max(0,Math.min(W-window._brk.pw,(e.clientX-rect.left)-window._brk.pw/2));};
+  window._brkKey=e=>{if(window._brk)window._brk.keys[e.key]=(e.type==='keydown');};
+  document.getElementById('brk-canvas')?.addEventListener('mousemove',window._brkMouse);
+  document.addEventListener('keydown',window._brkKey);document.addEventListener('keyup',window._brkKey);
+}
+function gBrkStart(){
+  const b=window._brk;document.getElementById('brkOv')?.remove();
+  b.score=0;b.lives=3;b.px=185;b.targetX=185;b.bx=220;b.by=290;b.bdx=3.2;b.bdy=-3.2;b.running=true;b.bricks=[];
+  const cols=['#7eb8f7','#a78bfa','#fb7185','#fbbf24','#34d399'];
+  for(let r=0;r<5;r++)for(let c=0;c<10;c++)b.bricks.push({x:6+c*43,y:30+r*28,alive:true,col:cols[r]});
+  clearInterval(b.timer);b.timer=setInterval(gBrkTick,16);
+}
+function gBrkTick(){
+  const b=window._brk;const cv=document.getElementById('brk-canvas');if(!cv||!b.running)return;
+  // Smooth paddle movement: keyboard moves targetX, then lerp px toward targetX
+  const kspeed=6;
+  if(b.keys['ArrowLeft']||b.keys['a'])b.targetX=Math.max(0,b.targetX-kspeed);
+  if(b.keys['ArrowRight']||b.keys['d'])b.targetX=Math.min(b.W-b.pw,b.targetX+kspeed);
+  // Lerp for Pong-like smoothness
+  b.px+=(b.targetX-b.px)*0.22;
+  // Ball
+  b.bx+=b.bdx;b.by+=b.bdy;
+  if(b.bx<=6){b.bx=6;b.bdx=Math.abs(b.bdx);}
+  if(b.bx>=b.W-6){b.bx=b.W-6;b.bdx=-Math.abs(b.bdx);}
+  if(b.by<=6){b.by=6;b.bdy=Math.abs(b.bdy);}
+  if(b.by>=b.H-8){
+    b.lives--;b.bx=220;b.by=290;b.bdx=3.2;b.bdy=-3.2;
+    if(b.lives<=0){b.running=false;clearInterval(b.timer);const wrap=cv.closest('.game-canvas-wrap');const ov=document.createElement('div');ov.className='game-overlay';ov.innerHTML=`<div class="game-overlay-title">Game Over</div><div class="game-overlay-sub">Score: ${b.score}</div><button class="game-start-btn" onclick="gBrkStart()">Again</button>`;wrap.appendChild(ov);}
+  }
+  // Paddle hit
+  if(b.by>=b.H-26&&b.by<=b.H-10&&b.bx>=b.px-2&&b.bx<=b.px+b.pw+2){
+    b.bdy=-Math.abs(b.bdy);const hit=(b.bx-(b.px+b.pw/2))/(b.pw/2);b.bdx=hit*5.5;if(Math.abs(b.bdx)<0.6)b.bdx=(b.bdx<0?-1:1)*0.6;
+  }
+  b.bricks.forEach(br=>{if(!br.alive)return;if(b.bx>br.x&&b.bx<br.x+38&&b.by>br.y&&b.by<br.y+20){br.alive=false;b.bdy*=-1;b.score+=10;}});
+  if(b.bricks.every(x=>!x.alive)){b.running=false;clearInterval(b.timer);const wrap=cv.closest('.game-canvas-wrap');const ov=document.createElement('div');ov.className='game-overlay';ov.innerHTML=`<div class="game-overlay-title">You Win! 🎉</div><div class="game-overlay-sub">Score: ${b.score}</div><button class="game-start-btn" onclick="gBrkStart()">Again</button>`;wrap.appendChild(ov);}
+  document.getElementById('brksc').textContent=`Score: ${b.score} | Lives: ${b.lives}`;
+  const g=cv.getContext('2d');g.fillStyle='#050508';g.fillRect(0,0,b.W,b.H);
+  b.bricks.forEach(br=>{if(!br.alive)return;g.fillStyle=br.col;g.beginPath();g.roundRect(br.x,br.y,38,18,4);g.fill();});
+  g.shadowColor='#7eb8f7';g.shadowBlur=10;g.fillStyle='rgba(126,184,247,0.9)';g.beginPath();g.roundRect(b.px,b.H-20,b.pw,10,5);g.fill();g.shadowBlur=0;
+  g.shadowColor='rgba(255,255,255,0.8)';g.shadowBlur=8;g.fillStyle='#fff';g.beginPath();g.arc(b.bx,b.by,6,0,Math.PI*2);g.fill();g.shadowBlur=0;
+}
+
+// ── TETRIS ────────────────────────────────────────────────────────
+function gTetris(c,wid){
+  const W=200,H=400,BS=20;
+  c.innerHTML=`<div class="game-view"><div class="game-hdr"><button class="game-hdr-back" onclick="gMenu('${wid}')">← Games</button><span style="font-family:var(--mono);font-size:13px;margin-left:8px">Tetris</span><span class="game-score" id="tetsc">Score: 0</span></div><div class="game-canvas-wrap" style="gap:14px"><canvas class="game-canvas" id="tet-canvas" width="${W}" height="${H}"></canvas><div style="font-size:11px;color:var(--muted);line-height:2.2">← → Move<br>↑ Rotate<br>↓ Drop</div><div class="game-overlay" id="tetOv"><div class="game-overlay-title">🟦 Tetris</div><div class="game-overlay-sub">Arrow keys</div><button class="game-start-btn" onclick="gTetStart()">Start</button></div></div></div>`;
+  const PIECES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[1,1,0],[0,1,1]],[[0,1,1],[1,1,0]]];
+  const COLORS=['#7eb8f7','#fbbf24','#a78bfa','#fb7185','#34d399','#f97316','#22d3ee'];
+  window._tet={board:Array.from({length:20},()=>Array(10).fill(0)),score:0,piece:null,timer:null,running:false,PIECES,COLORS,W,H,BS};
+  window._tetKey=e=>{const t=window._tet;if(!t||!t.running)return;if(e.key==='ArrowLeft')gTetMove(-1);else if(e.key==='ArrowRight')gTetMove(1);else if(e.key==='ArrowUp')gTetRot();else if(e.key==='ArrowDown')gTetDrop();};
+  document.addEventListener('keydown',window._tetKey);
+}
+function gTetStart(){const t=window._tet;document.getElementById('tetOv')?.remove();t.board=Array.from({length:20},()=>Array(10).fill(0));t.score=0;t.running=true;gTetSpawn();clearInterval(t.timer);t.timer=setInterval(gTetTick,400);}
+function gTetSpawn(){const t=window._tet;const pi=Math.floor(Math.random()*t.PIECES.length);t.piece={sh:t.PIECES[pi].map(r=>[...r]),ci:pi,x:3,y:0};if(!gTetFits(t.piece.sh,t.piece.x,t.piece.y)){t.running=false;clearInterval(t.timer);const cv=document.getElementById('tet-canvas');if(cv){const ov=document.createElement('div');ov.className='game-overlay';ov.innerHTML=`<div class="game-overlay-title">Game Over</div><div class="game-overlay-sub">Score: ${t.score}</div><button class="game-start-btn" onclick="gTetStart()">Again</button>`;cv.closest('.game-canvas-wrap').appendChild(ov);}}}
+function gTetFits(sh,ox,oy){const t=window._tet;return sh.every((row,r)=>row.every((v,c)=>!v||((oy+r>=0)&&(oy+r<20)&&(ox+c>=0)&&(ox+c<10)&&!t.board[oy+r][ox+c])));}
+function gTetMove(dx){const t=window._tet;if(gTetFits(t.piece.sh,t.piece.x+dx,t.piece.y)){t.piece.x+=dx;gTetDraw();}}
+function gTetRot(){const t=window._tet;const rot=t.piece.sh[0].map((_,i)=>t.piece.sh.map(r=>r[i]).reverse());if(gTetFits(rot,t.piece.x,t.piece.y)){t.piece.sh=rot;gTetDraw();}}
+function gTetDrop(){const t=window._tet;if(gTetFits(t.piece.sh,t.piece.x,t.piece.y+1))t.piece.y++;else gTetPlace();gTetDraw();}
+function gTetTick(){const t=window._tet;if(!t.running)return;if(gTetFits(t.piece.sh,t.piece.x,t.piece.y+1))t.piece.y++;else gTetPlace();gTetDraw();}
+function gTetPlace(){const t=window._tet;t.piece.sh.forEach((row,r)=>row.forEach((v,c)=>{if(v)t.board[t.piece.y+r][t.piece.x+c]=t.piece.ci+1;}));let cl=0;for(let r=19;r>=0;r--){if(t.board[r].every(v=>v)){t.board.splice(r,1);t.board.unshift(Array(10).fill(0));cl++;r++;}}t.score+=[0,100,300,500,800][cl]||0;const sc=document.getElementById('tetsc');if(sc)sc.textContent='Score: '+t.score;gTetSpawn();}
+function gTetDraw(){const t=window._tet;const cv=document.getElementById('tet-canvas');if(!cv)return;const g=cv.getContext('2d');g.fillStyle='#050508';g.fillRect(0,0,t.W,t.H);g.strokeStyle='rgba(255,255,255,0.04)';g.lineWidth=0.5;for(let x=0;x<=10;x++){g.beginPath();g.moveTo(x*t.BS,0);g.lineTo(x*t.BS,t.H);g.stroke();}for(let y=0;y<=20;y++){g.beginPath();g.moveTo(0,y*t.BS);g.lineTo(t.W,y*t.BS);g.stroke();}t.board.forEach((row,r)=>row.forEach((v,c)=>{if(v){g.fillStyle=t.COLORS[v-1];g.beginPath();g.roundRect(c*t.BS+1,r*t.BS+1,t.BS-2,t.BS-2,3);g.fill();}}));if(t.piece)t.piece.sh.forEach((row,r)=>row.forEach((v,c)=>{if(v){g.fillStyle=t.COLORS[t.piece.ci];g.beginPath();g.roundRect((t.piece.x+c)*t.BS+1,(t.piece.y+r)*t.BS+1,t.BS-2,t.BS-2,3);g.fill();}}));}
+
+// ── NULLMON ──────────────────────────────────────────────────────
+const NM_MONS=[
+  {id:0,name:'Sparky',  type:'electric',e:'⚡',hp:38,atk:13,def:9,  spd:14,col:'#fbbf24',mv:[0,1,2,3]},
+  {id:1,name:'Frostbit',type:'ice',      e:'❄️',hp:42,atk:11,def:13,spd:9, col:'#7eb8f7',mv:[4,5,6,3]},
+  {id:2,name:'Blazer',  type:'fire',     e:'🔥',hp:40,atk:14,def:8, spd:12,col:'#fb7185',mv:[7,8,6,3]},
+  {id:3,name:'Leaflet', type:'grass',    e:'🌿',hp:46,atk:10,def:12,spd:8, col:'#34d399',mv:[9,10,6,3]},
+  {id:4,name:'Aqua',    type:'water',    e:'💧',hp:44,atk:11,def:14,spd:10,col:'#60a5fa',mv:[11,12,6,3]},
+  {id:5,name:'Stoner',  type:'rock',     e:'🪨',hp:52,atk:12,def:16,spd:6, col:'#a78bfa',mv:[13,14,6,3]},
+  {id:6,name:'Shadoom', type:'dark',     e:'🌑',hp:36,atk:15,def:7, spd:13,col:'#6b7280',mv:[15,16,6,3]},
+  {id:7,name:'Lightfly',type:'flying',   e:'✨',hp:34,atk:12,def:9, spd:15,col:'#e2e8f0',mv:[17,18,6,3]},
+  {id:8,name:'Voltsnap',type:'electric', e:'🌩️',hp:33,atk:16,def:8, spd:16,col:'#f59e0b',mv:[0,1,19,3]},
+  {id:9,name:'Glaceon', type:'ice',      e:'🧊',hp:45,atk:10,def:17,spd:7, col:'#bae6fd',mv:[4,5,20,3]},
+  {id:10,name:'Emberon',type:'fire',     e:'🌋',hp:41,atk:15,def:8, spd:11,col:'#ef4444',mv:[7,8,21,3]},
+  {id:11,name:'Thornvine',type:'grass',  e:'🌵',hp:47,atk:11,def:13,spd:7, col:'#16a34a',mv:[9,10,22,3]},
+  {id:12,name:'Wavecrest',type:'water',  e:'🌊',hp:45,atk:13,def:12,spd:11,col:'#0ea5e9',mv:[11,12,6,3]},
+];
+const NM_MOVES=[
+  {id:0,n:'Zap',      t:'electric',p:40,pp:35},{id:1,n:'Shock Wave',t:'electric',p:0,pp:20,sts:'para'},
+  {id:2,n:'Thunder',  t:'electric',p:80,pp:10},{id:3,n:'Tackle',    t:'normal',  p:35,pp:35},
+  {id:4,n:'Frost Bite',t:'ice',    p:45,pp:25},{id:5,n:'Blizzard',  t:'ice',     p:70,pp:10},
+  {id:6,n:'Growl',    t:'normal',  p:0, pp:40,sts:'atk'},{id:7,n:'Ember',t:'fire',p:40,pp:25},
+  {id:8,n:'Flame Burst',t:'fire',  p:65,pp:10},{id:9,n:'Razor Leaf',t:'grass',p:40,pp:25},
+  {id:10,n:'Vine Whip',t:'grass',  p:35,pp:25},{id:11,n:'Water Gun',t:'water',p:40,pp:25},
+  {id:12,n:'Surf',    t:'water',   p:70,pp:15},{id:13,n:'Rock Toss', t:'rock',  p:45,pp:15},
+  {id:14,n:'Stone Edge',t:'rock',  p:75,pp:5}, {id:15,n:'Shadow Ball',t:'dark',p:60,pp:15},
+  {id:16,n:'Sneak',   t:'dark',    p:40,pp:20},{id:17,n:'Gust',      t:'flying',p:40,pp:35},
+  {id:18,n:'Air Slash',t:'flying', p:65,pp:15},{id:19,n:'Volt Crash',t:'electric',p:90,pp:10},
+  {id:20,n:'Ice Beam', t:'ice',    p:85,pp:10},{id:21,n:'Inferno',   t:'fire',  p:90,pp:5},
+  {id:22,n:'Solar Beam',t:'grass', p:90,pp:5},
+];
+const NM_EFF={fire:{grass:2,ice:2,water:0.5,rock:0.5,fire:0.5},water:{fire:2,rock:2,grass:0.5,water:0.5},electric:{water:2,flying:2,rock:0.5,grass:0.5,electric:0.5},grass:{water:2,rock:2,fire:0.5,flying:0.5},ice:{grass:2,flying:2,fire:0.5},rock:{fire:2,flying:2,water:0.5,grass:0.5},dark:{},flying:{grass:2,rock:0.5},normal:{}};
+const NM_TCOL={electric:'#fbbf24',ice:'#7eb8f7',fire:'#fb7185',grass:'#34d399',water:'#60a5fa',rock:'#a78bfa',dark:'#9ca3af',flying:'#e2e8f0',normal:'#9ca3af'};
+const NM_ZONES=[{name:'Forest',pool:[0,3,6,7]},{name:'Cave',pool:[5,6,8]},{name:'Beach',pool:[4,7,12]},{name:'Mountain',pool:[5,8,10]},{name:'Tundra',pool:[1,9,11]}];
+let nmSt=JSON.parse(localStorage.getItem('nos_nm')||'null');
+function nmSave(){localStorage.setItem('nos_nm',JSON.stringify(nmSt));}
+function nmMakeMon(defId,lv){const d=NM_MONS[defId];const s=1+(lv-1)*0.12;return{defId,name:d.name,type:d.type,e:d.e,col:d.col,lv,hp:Math.round(d.hp*s),mhp:Math.round(d.hp*s),atk:Math.round(d.atk*s),def:Math.round(d.def*s),exp:0,expNext:Math.round(100*Math.pow(lv,1.4)),moves:d.mv.slice(0,4).map(mid=>{const m=NM_MOVES[mid];return{...m,cpp:m.pp};})};}
+function nmEff(mt,dt){return(NM_EFF[mt]||{})[dt]||1;}
+function nmDmg(atk,move,def){if(!move.p)return{d:0,e:1};const e=nmEff(move.t,def.type);const d=Math.max(1,Math.round((move.p*(atk.atk/def.def)*e)/10+(Math.random()*4-2)));return{d,e};}
+function gNullmon(c,wid){
+  if(!nmSt){
+    c.innerHTML=`<div class="nm-wrap"><div class="nm-choose">
+      <div class="nm-choose-title">✦ CHOOSE YOUR STARTER ✦</div>
+      <div style="font-size:12px;color:var(--muted)">Your Nullmon journey begins!</div>
+      <div class="nm-starters">
+        ${[0,1,2].map(id=>{const d=NM_MONS[id];return`<div class="nm-card" onclick="nmChoose(${id},'${wid}')"><div class="nc-spr">${d.e}</div><div class="nc-name">${d.name}</div><div class="nc-type" style="color:${NM_TCOL[d.type]}">${d.type}</div><div style="font-size:10px;color:var(--muted)">HP ${d.hp} · ATK ${d.atk}</div></div>`;}).join('')}
+      </div>
+    </div></div>`;
+  } else {nmExplore(c,wid);}
+}
+function nmChoose(id,wid){nmSt={team:[nmMakeMon(id,5)],zone:0,potions:3,balls:5};nmSave();const c=document.getElementById('gapp_'+wid);if(c)nmExplore(c,wid);}
+function nmExplore(c,wid){
+  nmSt.wid=wid;const z=NM_ZONES[nmSt.zone||0];
+  c.innerHTML=`<div class="nm-wrap"><div class="nm-explore">
+    <div class="nm-topbar">
+      <span style="font-family:var(--mono);font-size:13px;color:var(--accent)">✦ NULLMON</span>
+      <select class="nm-zone" onchange="nmZone(this.value,'${wid}')">
+        ${NM_ZONES.map((z,i)=>`<option value="${i}"${i===nmSt.zone?' selected':''}>${z.name}</option>`).join('')}
+      </select>
+      <div class="nm-bag-info"><span>💊 ${nmSt.potions}</span><span>🔮 ${nmSt.balls}</span></div>
+    </div>
+    <div class="nm-team-strip">${nmSt.team.map((m,i)=>`<div class="nm-slot${m.hp<=0?' fainted':''}">${m.e} ${m.name} <span style="font-family:var(--mono);color:${m.hp<=0?'var(--red)':m.hp<m.mhp*0.3?'#fbbf24':'#34d399'}">${m.hp}/${m.mhp}</span> Lv${m.lv}</div>`).join('')}</div>
+    <div class="nm-field">
+      <div style="font-size:13px;color:var(--muted);text-align:center">Exploring <b style="color:var(--text)">${z.name}</b></div>
+      <div style="display:flex;gap:10px">
+        <button class="nm-field-btn" onclick="nmWild('${wid}')">🌿 Explore!</button>
+        <button class="nm-heal-btn" onclick="nmHeal('${wid}')">💊 Heal Team</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Team: ${nmSt.team.length}/6</div>
+    </div>
+  </div></div>`;
+}
+function nmZone(v,wid){nmSt.zone=parseInt(v);nmSave();const c=document.getElementById('gapp_'+wid);if(c)nmExplore(c,wid);}
+function nmHeal(wid){nmSt.team.forEach(m=>{m.hp=m.mhp;m.moves.forEach(mv=>mv.cpp=mv.pp);});nmSave();notify('Nullmon','Team healed at Null Center!','💊');const c=document.getElementById('gapp_'+wid);if(c)nmExplore(c,wid);}
+function nmWild(wid){
+  const z=NM_ZONES[nmSt.zone||0];const wild=nmMakeMon(z.pool[Math.floor(Math.random()*z.pool.length)],Math.max(1,Math.round(nmSt.team.reduce((s,m)=>s+m.lv,0)/nmSt.team.length)+Math.floor(Math.random()*4)-2));
+  const player=nmSt.team.find(m=>m.hp>0);if(!player){notify('Nullmon','All fainted! Heal first.','❌');return;}
+  nmSt.wild=wild;nmSt.player=player;nmSt.wid=wid;nmSave();
+  nmBattle(document.getElementById('gapp_'+wid));
+}
+function nmBattle(c){
+  if(!c)return;const s=nmSt;const w=s.wild;const p=s.player;const wid=s.wid;
+  const phpPct=Math.max(0,p.hp/p.mhp*100);const whpPct=Math.max(0,w.hp/w.mhp*100);
+  const phpC=phpPct>50?'#34d399':phpPct>25?'#fbbf24':'#ff5f57';const whpC=whpPct>50?'#34d399':whpPct>25?'#fbbf24':'#ff5f57';
+  const expPct=Math.min(100,p.exp/p.expNext*100);
+  c.innerHTML=`<div class="nm-wrap"><div class="nm-battle">
+    <div class="nm-bf">
+      <div class="nm-fighter enemy">
+        <div class="nm-spr">${w.e}</div>
+        <div class="nm-binfo">
+          <div class="nm-bname">${w.name} <span class="nm-tbadge" style="background:${NM_TCOL[w.type]}22;color:${NM_TCOL[w.type]}">${w.type}</span></div>
+          <div class="nm-blvl">Lv.${w.lv} · ${w.hp}/${w.mhp} HP</div>
+          <div class="nm-bhp-wrap"><div class="nm-bhp" id="nmwhp" style="width:${whpPct}%;background:${whpC}"></div></div>
+        </div>
+      </div>
+      <div class="nm-log" id="nm-log">A wild <b>${w.name}</b> appeared!</div>
+      <div class="nm-fighter">
+        <div class="nm-spr">${p.e}</div>
+        <div class="nm-binfo">
+          <div class="nm-bname">${p.name}</div>
+          <div class="nm-blvl">Lv.${p.lv} · ${p.hp}/${p.mhp} HP</div>
+          <div class="nm-bhp-wrap"><div class="nm-bhp" id="nmphp" style="width:${phpPct}%;background:${phpC}"></div></div>
+          <div class="nm-bexp-wrap"><div class="nm-bexp" style="width:${expPct}%"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="nm-actions" id="nm-act">
+      <div class="nm-row">
+        <button class="nm-abtn fight" onclick="nmShowMoves()">⚔ FIGHT</button>
+        <button class="nm-abtn bag" onclick="nmShowBag('${wid}')">💊 BAG (${s.potions}p/${s.balls}b)</button>
+        <button class="nm-abtn run" onclick="nmRun('${wid}')">🏃 RUN</button>
+      </div>
+    </div>
+  </div></div>`;
+}
+function nmLog(msg){const el=document.getElementById('nm-log');if(el)el.innerHTML=msg;}
+function nmBars(){
+  const s=nmSt;
+  const wp=document.getElementById('nmwhp');const pp=document.getElementById('nmphp');
+  if(wp){const pct=Math.max(0,s.wild.hp/s.wild.mhp*100);wp.style.width=pct+'%';wp.style.background=pct>50?'#34d399':pct>25?'#fbbf24':'#ff5f57';}
+  if(pp){const pct=Math.max(0,s.player.hp/s.player.mhp*100);pp.style.width=pct+'%';pp.style.background=pct>50?'#34d399':pct>25?'#fbbf24':'#ff5f57';}
+}
+function nmShowMoves(){
+  const s=nmSt;const act=document.getElementById('nm-act');if(!act)return;
+  act.innerHTML=`<div class="nm-row">${s.player.moves.map((mv,i)=>`<button class="nm-mbtn${mv.cpp<=0?' ':''}" onclick="nmUseMove(${i})" ${mv.cpp<=0?'disabled':''}>${mv.n}<span style="color:${NM_TCOL[mv.t]};font-size:9px;margin-left:3px">${mv.t}</span><span class="nm-mpp">${mv.p?mv.p+' pw · ':' '}${mv.cpp}/${mv.pp} pp</span></button>`).join('')}</div><div class="nm-row"><button class="nm-abtn" onclick="nmBattle(document.getElementById('gapp_${s.wid}'))" style="flex:0;padding:5px 12px;font-size:10px">← Back</button></div>`;
+}
+function nmShowBag(wid){
+  const s=nmSt;const act=document.getElementById('nm-act');if(!act)return;
+  act.innerHTML=`<div class="nm-row">
+    <button class="nm-abtn bag${s.potions<=0?' ':''}" onclick="nmPotion('${wid}')" ${s.potions<=0?'disabled':''}>💊 Potion (${s.potions}) +30HP</button>
+    <button class="nm-abtn fight${s.balls<=0?' ':''}" onclick="nmBall('${wid}')" ${s.balls<=0?'disabled':''}>🔮 Nullball (${s.balls})</button>
+    <button class="nm-abtn" onclick="nmBattle(document.getElementById('gapp_${wid}'))" style="font-size:10px;padding:5px 10px">← Back</button>
+  </div>`;
+}
+function nmUseMove(i){
+  const s=nmSt;const mv=s.player.moves[i];if(!mv||mv.cpp<=0)return;mv.cpp--;
+  const {d,e}=nmDmg(s.player,mv,s.wild);s.wild.hp=Math.max(0,s.wild.hp-d);
+  let log=`${s.player.name} used ${mv.n}!`;if(e>1)log+=' Super effective!';else if(e<1&&e>0)log+=' Not very effective…';if(d)log+=` (${d} dmg)`;
+  nmLog(log);nmBars();nmSave();
+  if(s.wild.hp<=0){setTimeout(()=>nmWin(),700);return;}
+  setTimeout(()=>{
+    const emv=s.wild.moves[Math.floor(Math.random()*s.wild.moves.length)];
+    const {d:ed,e:ee}=nmDmg(s.wild,emv,s.player);s.player.hp=Math.max(0,s.player.hp-ed);
+    let elog=`${s.wild.name} used ${emv.n}!`;if(ee>1)elog+=' Super effective!';if(ed)elog+=` (${ed} dmg)`;
+    nmLog(elog);nmBars();nmSave();
+    if(s.player.hp<=0)setTimeout(()=>nmFaint(),700);
+    else nmBattle(document.getElementById('gapp_'+s.wid));
+  },800);
+}
+function nmPotion(wid){if(nmSt.potions<=0)return;nmSt.potions--;const heal=30;nmSt.player.hp=Math.min(nmSt.player.mhp,nmSt.player.hp+heal);nmLog(`Used Potion! +${heal} HP`);nmBars();nmSave();setTimeout(()=>nmBattle(document.getElementById('gapp_'+wid)),700);}
+function nmBall(wid){
+  if(nmSt.balls<=0)return;nmSt.balls--;const w=nmSt.wild;
+  const chance=0.35+(1-w.hp/w.mhp)*0.45;nmLog(`Threw a Nullball at ${w.name}…`);nmSave();
+  setTimeout(()=>{
+    if(Math.random()<chance){
+      if(nmSt.team.length<6){nmSt.team.push({...w,exp:0,expNext:Math.round(100*Math.pow(w.lv,1.4)),moves:w.moves.map(m=>({...m}))});nmLog(`Caught ${w.name}! 🎉`);}
+      else nmLog(`Caught ${w.name} but team is full!`);
+      nmSave();setTimeout(()=>{const c=document.getElementById('gapp_'+wid);if(c)nmExplore(c,wid);},1200);
+    } else {nmLog(`${w.name} broke free!`);setTimeout(()=>nmBattle(document.getElementById('gapp_'+wid)),900);}
+  },900);
+}
+function nmRun(wid){nmLog('Got away safely!');setTimeout(()=>{const c=document.getElementById('gapp_'+wid);if(c)nmExplore(c,wid);},700);}
+function nmWin(){
+  const s=nmSt;const xp=s.wild.lv*40+Math.floor(Math.random()*20);s.player.exp+=xp;s.balls=Math.min(10,s.balls+1);let lvd=false;
+  while(s.player.exp>=s.player.expNext){s.player.exp-=s.player.expNext;s.player.lv++;const sc=1+(s.player.lv-1)*0.12;const d=NM_MONS[s.player.defId];s.player.mhp=Math.round(d.hp*sc);s.player.hp=Math.min(s.player.hp+8,s.player.mhp);s.player.atk=Math.round(d.atk*sc);s.player.def=Math.round(d.def*sc);s.player.expNext=Math.round(100*Math.pow(s.player.lv,1.4));lvd=true;}
+  nmSave();nmLog(lvd?`${s.player.name} leveled up to Lv.${s.player.lv}! 🎉`:`+${xp} XP! Got a Nullball!`);
+  setTimeout(()=>{const c=document.getElementById('gapp_'+s.wid);if(c)nmExplore(c,s.wid);},1300);
+}
+function nmFaint(){
+  const s=nmSt;const next=s.team.find(m=>m!==s.player&&m.hp>0);
+  if(next){s.player=next;nmLog(`Go, ${next.name}!`);setTimeout(()=>nmBattle(document.getElementById('gapp_'+s.wid)),900);}
+  else{nmLog('All Nullmon fainted! Heal up…');setTimeout(()=>{const c=document.getElementById('gapp_'+s.wid);if(c)nmExplore(c,s.wid);},1300);}
+}
+
+// ── DESKTOP ICONS ─────────────────────────────────────────────────
+[{i:'📁',l:'Files',a:'files',x:20,y:20},{i:'🌐',l:'Browser',a:'browser',x:20,y:110},{i:'📝',l:'Notes',a:'notes',x:20,y:200},{i:'⬛',l:'Terminal',a:'terminal',x:20,y:290},{i:'🎮',l:'Games',a:'games',x:20,y:380}].forEach(d=>{
+  const el=document.createElement('div');el.className='desk-icon';el.style.left=d.x+'px';el.style.top=d.y+'px';
+  el.innerHTML=`<div class="icon-img">${d.i}</div><div class="icon-label">${d.l}</div>`;
+  el.ondblclick=()=>openApp(d.a);el.onclick=()=>{document.querySelectorAll('.desk-icon').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');};
+  document.getElementById('desktop-area').appendChild(el);
+});
+function deskDblClick(e){if(e.target.id==='desktop-area')document.querySelectorAll('.desk-icon').forEach(e=>e.classList.remove('selected'));}
+
+// ── DOCK ──────────────────────────────────────────────────────────
+const DOCK_APPS={files:{icon:'📁',label:'Files'},browser:{icon:'🌐',label:'Browser'},notes:{icon:'📝',label:'Notes'},terminal:{icon:'⬛',label:'Terminal'},games:{icon:'🎮',label:'Games'},settings:{icon:'⚙️',label:'Settings'},trash:{icon:'🗑️',label:'Trash'}};
+const DOCK_DEFAULT=['files','browser','notes','terminal','games','__sep__','settings','trash'];
+let dockPins=JSON.parse(localStorage.getItem('nos_dock2')||'null')||[...DOCK_DEFAULT];
+function saveDock(){localStorage.setItem('nos_dock2',JSON.stringify(dockPins));}
+function resetDock(){dockPins=[...DOCK_DEFAULT];saveDock();buildDock();notify('Settings','Dock reset','⚙️');}
+function dockRefresh(type){
+  const el=document.getElementById('dock-'+type);if(!el)return;
+  const wids=appWins(type);const count=wids.length;
+  el.classList.toggle('running',count>0);
+  let badge=el.querySelector('.dock-badge');
+  if(count>1){if(!badge){badge=document.createElement('span');badge.className='dock-badge';el.appendChild(badge);}badge.textContent=count;}
+  else if(badge)badge.remove();
+}
+function buildDock(){
+  const dock=document.getElementById('dock');dock.innerHTML='';
+  dockPins.forEach(name=>{
+    if(name==='__sep__'){const s=document.createElement('div');s.className='dock-sep';dock.appendChild(s);return;}
+    const meta=DOCK_APPS[name];if(!meta)return;
+    const el=document.createElement('div');el.className='dock-item';el.id='dock-'+name;el.title=meta.label;
+    el.textContent=meta.icon;
+    el.onclick=()=>openApp(name,true);
+    el.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();showDockCtx(e,name);};
+    dock.appendChild(el);
+    dockRefresh(name);
+  });
+}
+function showDockCtx(e,name){
+  hideCtx();document.querySelectorAll('.win-picker').forEach(p=>p.remove());
+  const m=document.getElementById('ctx-menu');const meta=DOCK_APPS[name];
+  const items=[{i:'➕',l:'New Window',a:()=>openApp(name)},{sep:1},{i:'📌',l:'Unpin from Dock',a:()=>{dockPins=dockPins.filter(x=>x!==name);saveDock();buildDock();notify('Dock',`${meta.label} unpinned`,'📌');}}];
+  m.innerHTML=items.map(x=>x.sep?'<div class="ctx-sep"></div>':`<div class="ctx-item">${x.i} ${x.l}</div>`).join('');
+  m.querySelectorAll('.ctx-item').forEach((b,i)=>b.addEventListener('click',()=>{items.filter(x=>!x.sep)[i].a();hideCtx();}));
+  m.style.cssText=`display:block;left:${Math.min(e.clientX,window.innerWidth-230)}px;top:${Math.min(e.clientY,window.innerHeight-120)}px`;
+}
+buildDock();
+
+// ── DOCK AUTO-HIDE ────────────────────────────────────────────────
+const _dock=document.getElementById('dock');let _dockTimer;
+function dockCheck(e){const threshold=window.innerHeight-80;if(e.clientY>=threshold){clearTimeout(_dockTimer);_dock.classList.remove('hidden');}else{clearTimeout(_dockTimer);_dockTimer=setTimeout(()=>_dock.classList.add('hidden'),600);}}
+document.getElementById('desktop-area').addEventListener('mousemove',dockCheck);
+_dock.addEventListener('mouseenter',()=>{clearTimeout(_dockTimer);_dock.classList.remove('hidden');});
+_dock.addEventListener('mouseleave',()=>{_dockTimer=setTimeout(()=>_dock.classList.add('hidden'),800);});
+setTimeout(()=>_dock.classList.add('hidden'),2000);
+
+// Wallpaper restore
+const _wp=localStorage.getItem('nos_wp'),_wi=localStorage.getItem('nos_wp_img'),_d=document.getElementById('desktop');
+if(_wi&&_wp==='custom'){_d.style.backgroundImage=`url(${_wi})`;_d.style.backgroundSize='cover';_d.style.backgroundPosition='center';}
+else if(_wp&&_wp!=='custom'){['wp-1','wp-2','wp-3','wp-4','wp-5'].forEach(c=>_d.classList.remove(c));_d.classList.add(_wp);}
+</script>
+</body>
+</html>
